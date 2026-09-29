@@ -50,6 +50,8 @@ public class InstagramDTOs {
         private String profilePictureUrl;
         private Integer followersCount;
         private Integer followingCount;
+        private Integer mediaCount;
+        private String biography;
         private boolean valid;
         private String message;
     }
@@ -77,12 +79,16 @@ public class InstagramDTOs {
         private String profilePictureUrl;
         private Integer followersCount;
         private Integer followingCount;
+        private Integer mediaCount;
+        private String biography;
+        private String category;
         private String accountType;
         private AccountStatus status;
         private LocalDateTime tokenExpiresAt;
         private LocalDateTime lastRefreshedAt;
         private LocalDateTime connectedAt;
         private List<String> scopesGranted;
+        private String accessToken;
     }
 
     @Getter

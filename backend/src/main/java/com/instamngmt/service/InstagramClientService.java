@@ -336,6 +336,8 @@ public class InstagramClientService {
             String profilePictureUrl,
             int followersCount,
             int followingCount,
+            int mediaCount,
+            String biography,
             boolean valid
     ) {}
 
@@ -368,8 +370,8 @@ public class InstagramClientService {
     private DetailedAccountInfo executeFetchAccountDetails(String host, String userId, String token) {
         String targetEndpoint = (userId != null && userId.matches("\\d+")) ? userId : "me";
         String fields = host.contains("instagram.com") 
-                ? "id,username,account_type,profile_picture_url,followers_count,follows_count"
-                : "id,username,name,profile_picture_url,followers_count,follows_count,media_count";
+                ? "id,username,account_type,profile_picture_url,followers_count,follows_count,media_count,biography"
+                : "id,username,name,profile_picture_url,followers_count,follows_count,media_count,biography";
         
         String url = String.format("%s/%s/%s?fields=%s&access_token=%s",
                 host, apiVersion, targetEndpoint, fields, token);
@@ -393,8 +395,10 @@ public class InstagramClientService {
             String profilePic = node.has("profile_picture_url") ? node.get("profile_picture_url").asText() : null;
             int followers = node.has("followers_count") ? node.get("followers_count").asInt() : 0;
             int following = node.has("follows_count") ? node.get("follows_count").asInt() : 0;
+            int mediaCount = node.has("media_count") ? node.get("media_count").asInt() : 0;
+            String bio = node.has("biography") ? node.get("biography").asText() : "";
 
-            return new DetailedAccountInfo(fetchedId, fetchedUsername, profilePic, followers, following, true);
+            return new DetailedAccountInfo(fetchedId, fetchedUsername, profilePic, followers, following, mediaCount, bio, true);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse account details: " + e.getMessage(), e);
         }

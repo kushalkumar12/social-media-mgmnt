@@ -39,6 +39,14 @@ public class InstagramAccount {
     @Column(name = "following_count")
     private Integer followingCount = 0;
 
+    @Column(name = "media_count")
+    private Integer mediaCount = 0;
+
+    @Column(columnDefinition = "TEXT")
+    private String biography;
+
+    private String category;
+
     private String accountType = "BUSINESS";
 
     @Column(name = "access_token_encrypted", columnDefinition = "TEXT", nullable = false)

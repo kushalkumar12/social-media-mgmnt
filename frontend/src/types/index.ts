@@ -49,12 +49,16 @@ export interface InstagramAccount {
   profilePictureUrl?: string;
   followersCount?: number;
   followingCount?: number;
+  mediaCount?: number;
+  biography?: string;
+  category?: string;
   accountType: string;
   status: AccountStatus;
   tokenExpiresAt?: string;
   lastRefreshedAt?: string;
   connectedAt: string;
   scopesGranted: string[];
+  accessToken?: string;
 }
 
 export interface Media {

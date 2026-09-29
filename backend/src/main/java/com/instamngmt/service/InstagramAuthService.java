@@ -51,6 +51,8 @@ public class InstagramAuthService {
                 .profilePictureUrl(info.profilePictureUrl())
                 .followersCount(info.followersCount())
                 .followingCount(info.followingCount())
+                .mediaCount(info.mediaCount())
+                .biography(info.biography())
                 .valid(info.valid())
                 .message("Instagram Account verified successfully via Graph API!")
                 .build();
@@ -109,24 +111,61 @@ public class InstagramAuthService {
         if (request.getFollowingCount() != null) account.setFollowingCount(request.getFollowingCount());
         if (request.getProfilePictureUrl() != null && !request.getProfilePictureUrl().isBlank()) {
             account.setProfilePictureUrl(request.getProfilePictureUrl());
-        } else {
-            try {
-                InstagramClientService.DetailedAccountInfo detailedInfo = instagramClientService.fetchAccountDetails(targetUserId, token);
-                if (detailedInfo.profilePictureUrl() != null) {
-                    account.setProfilePictureUrl(detailedInfo.profilePictureUrl());
-                }
-            } catch (Exception ignored) {}
         }
+
+        try {
+            InstagramClientService.DetailedAccountInfo detailedInfo = instagramClientService.fetchAccountDetails(targetUserId, token);
+            if (detailedInfo.profilePictureUrl() != null && !detailedInfo.profilePictureUrl().isBlank()) {
+                account.setProfilePictureUrl(detailedInfo.profilePictureUrl());
+            }
+            account.setMediaCount(detailedInfo.mediaCount());
+            if (detailedInfo.biography() != null && !detailedInfo.biography().isBlank()) {
+                account.setBiography(detailedInfo.biography());
+            }
+        } catch (Exception ignored) {}
 
         account = instagramAccountRepository.save(account);
         return mapToDTO(account);
     }
 
+    @Transactional
     public List<InstagramDTOs.InstagramAccountDTO> getUserAccounts(User user) {
-        return instagramAccountRepository.findByUserId(user.getId())
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+        List<InstagramAccount> accounts = instagramAccountRepository.findByUserId(user.getId());
+        if (accounts.isEmpty()) {
+            return List.of();
+        }
+
+        // Live check with Meta Graph API for each account to ensure picture, username and token status are accurate
+        accounts.parallelStream().forEach(account -> {
+            try {
+                String token = encryptionUtil.decrypt(account.getAccessTokenEncrypted());
+                InstagramClientService.DetailedAccountInfo info = instagramClientService.fetchAccountDetails(account.getIgUserId(), token);
+                if (info.username() != null && !info.username().isBlank()) {
+                    account.setUsername(info.username());
+                }
+                if (info.profilePictureUrl() != null && !info.profilePictureUrl().isBlank()) {
+                    account.setProfilePictureUrl(info.profilePictureUrl());
+                }
+                account.setFollowersCount(info.followersCount());
+                account.setFollowingCount(info.followingCount());
+                account.setMediaCount(info.mediaCount());
+                if (info.biography() != null && !info.biography().isBlank()) {
+                    account.setBiography(info.biography());
+                }
+                account.setStatus(AccountStatus.ACTIVE);
+                account.setLastRefreshedAt(LocalDateTime.now());
+                instagramAccountRepository.save(account);
+            } catch (Exception e) {
+                String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                if (errorMsg.contains("token") || errorMsg.contains("session") || errorMsg.contains("190") || errorMsg.contains("oauth") || errorMsg.contains("expired") || errorMsg.contains("invalid")) {
+                    account.setStatus(AccountStatus.TOKEN_EXPIRED);
+                    account.setLastRefreshedAt(LocalDateTime.now());
+                    instagramAccountRepository.save(account);
+                }
+            }
+        });
+
+        return accounts.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public InstagramDTOs.InstagramAccountDTO getAccountById(User user, Long accountId) {
@@ -161,6 +200,10 @@ public class InstagramAuthService {
             }
             account.setFollowersCount(info.followersCount());
             account.setFollowingCount(info.followingCount());
+            account.setMediaCount(info.mediaCount());
+            if (info.biography() != null && !info.biography().isBlank()) {
+                account.setBiography(info.biography());
+            }
             account.setLastRefreshedAt(LocalDateTime.now());
             account.setStatus(AccountStatus.ACTIVE);
 
@@ -205,6 +248,10 @@ public class InstagramAuthService {
         }
         account.setFollowersCount(info.followersCount());
         account.setFollowingCount(info.followingCount());
+        account.setMediaCount(info.mediaCount());
+        if (info.biography() != null && !info.biography().isBlank()) {
+            account.setBiography(info.biography());
+        }
         account.setTokenExpiresAt(LocalDateTime.now().plusDays(60));
         account.setLastRefreshedAt(LocalDateTime.now());
         account.setStatus(AccountStatus.ACTIVE);
@@ -226,6 +273,11 @@ public class InstagramAuthService {
                 ? Arrays.asList(account.getScopesGranted().split(","))
                 : List.of();
 
+        String decryptedToken = null;
+        try {
+            decryptedToken = encryptionUtil.decrypt(account.getAccessTokenEncrypted());
+        } catch (Exception ignored) {}
+
         return InstagramDTOs.InstagramAccountDTO.builder()
                 .id(account.getId())
                 .facebookPageId(account.getFacebookPageId())
@@ -234,12 +286,16 @@ public class InstagramAuthService {
                 .profilePictureUrl(account.getProfilePictureUrl())
                 .followersCount(account.getFollowersCount())
                 .followingCount(account.getFollowingCount())
+                .mediaCount(account.getMediaCount())
+                .biography(account.getBiography())
+                .category(account.getCategory() != null ? account.getCategory() : "Digital Creator & Business")
                 .accountType(account.getAccountType())
                 .status(account.getStatus())
                 .tokenExpiresAt(account.getTokenExpiresAt())
                 .lastRefreshedAt(account.getLastRefreshedAt())
                 .connectedAt(account.getConnectedAt())
                 .scopesGranted(scopes)
+                .accessToken(decryptedToken)
                 .build();
     }
 }
