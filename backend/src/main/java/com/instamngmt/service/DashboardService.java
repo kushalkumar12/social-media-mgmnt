@@ -27,11 +27,7 @@ public class DashboardService {
     }
 
     public DashboardDTOs.DashboardSummaryDTO getDashboardSummary(User user) {
-        long totalPosts = scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.SCHEDULED)
-                + scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.PUBLISHED)
-                + scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.FAILED_TERMINAL)
-                + scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.FAILED_RETRYABLE)
-                + scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.DRAFT);
+        long totalPosts = scheduledPostRepository.countByUserId(user.getId());
 
         long scheduledCount = scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.SCHEDULED)
                 + scheduledPostRepository.countByUserIdAndStatus(user.getId(), PostStatus.QUEUED)

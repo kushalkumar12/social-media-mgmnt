@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { DashboardSummary } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Link } from 'react-router-dom';
-import { Calendar, CheckCircle2, Clock, AlertTriangle, Instagram, PlusCircle, RefreshCw, Zap } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, AlertTriangle, Instagram, PlusCircle, RefreshCw, Zap, Layers } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -52,7 +52,17 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+        <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.15)', color: '#A78BFA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Layers size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Total Scheduled Posts</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '2px' }}>{summary?.totalPosts || 0}</div>
+          </div>
+        </div>
+
         <div className="glass-card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.15)', color: '#60A5FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Clock size={24} />

@@ -22,5 +22,6 @@ public interface ScheduledPostRepository extends JpaRepository<ScheduledPost, Lo
     @Query("SELECT p FROM ScheduledPost p WHERE p.status = :status AND p.scheduledAt <= :now")
     List<ScheduledPost> findDuePosts(@Param("status") PostStatus status, @Param("now") LocalDateTime now);
 
+    long countByUserId(Long userId);
     long countByUserIdAndStatus(Long userId, PostStatus status);
 }
