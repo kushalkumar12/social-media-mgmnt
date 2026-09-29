@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 import { groupService, AccountGroupDTO } from '../services/groupService';
 import { InstagramAccount } from '../types';
@@ -98,6 +99,17 @@ export const InstagramConnectPage: React.FC = () => {
       text: `${days}d ${hours}h ${minutes}m ${seconds}s remaining`
     };
   };
+
+  // Close popup on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedProfileAccount(null);
+    };
+    if (selectedProfileAccount) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedProfileAccount]);
 
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -1337,315 +1349,496 @@ export const InstagramConnectPage: React.FC = () => {
         )}
 
         {/* --- MODAL 5: INSTAGRAM PROFILE PREVIEW POPUP --- */}
-        {selectedProfileAccount && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 9999,
-              background: 'rgba(15, 23, 42, 0.65)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '20px'
-            }}
-            onClick={() => setSelectedProfileAccount(null)}
-          >
+        {/* --- MODAL 5: INSTAGRAM PROFILE PREVIEW POPUP --- */}
+        {selectedProfileAccount &&
+          createPortal(
             <div
-              onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: '520px',
-                maxHeight: '92vh',
-                background: '#FFFFFF',
-                color: '#0F172A',
-                border: '1px solid rgba(226, 232, 240, 0.9)',
-                borderRadius: '24px',
-                padding: '0',
-                overflow: 'hidden',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 99999,
+                background: 'rgba(0, 0, 0, 0.45)',
+                backdropFilter: 'blur(2px)',
+                WebkitBackdropFilter: 'blur(2px)',
                 display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                position: 'relative'
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px 16px',
+                overflowY: 'auto'
               }}
+              onClick={() => setSelectedProfileAccount(null)}
             >
-              {/* Instagram App Top Bar */}
               <div
+                onClick={(e) => e.stopPropagation()}
                 style={{
+                  width: '100%',
+                  maxWidth: '480px',
+                  maxHeight: 'min(90vh, 740px)',
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                  border: '1px solid rgba(226, 232, 240, 0.95)',
+                  borderRadius: '24px',
+                  padding: '0',
+                  overflow: 'hidden',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #F1F5F9',
-                  background: '#FAFAFA'
+                  flexDirection: 'column',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+                  position: 'relative',
+                  margin: 'auto'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Instagram size={20} color="#E1306C" />
-                  <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0F172A' }}>
-                    @{selectedProfileAccount.username}
-                  </span>
-                  {selectedProfileAccount.status === 'ACTIVE' ? (
-                    <span
-                      style={{
-                        background: '#ECFDF5',
-                        color: '#059669',
-                        border: '1px solid #A7F3D0',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <CheckCircle2 size={12} /> Active
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        background: '#FEF2F2',
-                        color: '#DC2626',
-                        border: '1px solid #FECACA',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <XCircle size={12} /> Token Expired
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedProfileAccount(null)}
+                {/* 1. Sticky Instagram Top Bar with Prominent Close Button */}
+                <div
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748B',
-                    cursor: 'pointer',
-                    padding: '6px',
-                    borderRadius: '50%',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 30,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'space-between',
+                    padding: '14px 20px',
+                    borderBottom: '1px solid #F1F5F9',
+                    background: '#FFFFFF'
                   }}
                 >
-                  <X size={20} />
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Instagram size={20} color="#E1306C" />
+                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0F172A' }}>
+                      @{selectedProfileAccount.username}
+                    </span>
+                    {selectedProfileAccount.status === 'ACTIVE' ? (
+                      <span
+                        style={{
+                          background: '#ECFDF5',
+                          color: '#059669',
+                          border: '1px solid #A7F3D0',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <CheckCircle2 size={12} /> Active
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          background: '#FEF2F2',
+                          color: '#DC2626',
+                          border: '1px solid #FECACA',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <XCircle size={12} /> Token Expired
+                      </span>
+                    )}
+                  </div>
 
-              {/* Scrollable Profile Body */}
-              <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Profile Header Row (DP + Stats) */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
-                  {/* Profile Picture with Instagram Gradient Story Ring */}
-                  <div
+                  {/* Prominent High-Contrast Close Button */}
+                  <button
+                    onClick={() => setSelectedProfileAccount(null)}
+                    title="Close preview (Esc)"
                     style={{
-                      width: '92px',
-                      height: '92px',
-                      minWidth: '92px',
+                      background: '#F1F5F9',
+                      border: '1px solid #CBD5E1',
+                      color: '#1E293B',
+                      cursor: 'pointer',
+                      width: '32px',
+                      height: '32px',
                       borderRadius: '50%',
-                      background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-                      padding: '3px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 8px 20px rgba(225, 48, 108, 0.25)'
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#E2E8F0';
+                      e.currentTarget.style.color = '#000000';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#F1F5F9';
+                      e.currentTarget.style.color = '#1E293B';
                     }}
                   >
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        background: '#FFFFFF',
-                        padding: '2px',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {selectedProfileAccount.profilePictureUrl ? (
-                        <img
-                          src={selectedProfileAccount.profilePictureUrl}
-                          alt={selectedProfileAccount.username}
-                          referrerPolicy="no-referrer"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-                            color: '#fff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 800,
-                            fontSize: '1.6rem',
-                            borderRadius: '50%'
-                          }}
-                        >
-                          {selectedProfileAccount.username.substring(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 3 Stats Columns */}
-                  <div style={{ display: 'flex', flex: 1, justifyContent: 'space-around', textAlign: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
-                        {selectedProfileAccount.mediaCount ?? 0}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>Posts</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
-                        {selectedProfileAccount.followersCount
-                          ? (selectedProfileAccount.followersCount >= 1000
-                              ? (selectedProfileAccount.followersCount / 1000).toFixed(1) + 'K'
-                              : selectedProfileAccount.followersCount)
-                          : 0}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>Followers</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
-                        {selectedProfileAccount.followingCount
-                          ? (selectedProfileAccount.followingCount >= 1000
-                              ? (selectedProfileAccount.followingCount / 1000).toFixed(1) + 'K'
-                              : selectedProfileAccount.followingCount)
-                          : 0}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>Following</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Identity, Tags & Bio */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0F172A' }}>
-                      {selectedProfileAccount.username}
-                    </span>
-                    <span
-                      style={{
-                        background: '#F1F5F9',
-                        color: '#475569',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}
-                    >
-                      {selectedProfileAccount.category || 'Creator & Business'}
-                    </span>
-                    <span
-                      style={{
-                        background: '#EFF6FF',
-                        color: '#2563EB',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}
-                    >
-                      #{selectedProfileAccount.accountType || 'BUSINESS'}
-                    </span>
-                  </div>
-
-                  {/* Biography */}
-                  <p style={{ fontSize: '0.88rem', color: '#334155', lineHeight: '1.45', margin: 0, whiteSpace: 'pre-line' }}>
-                    {selectedProfileAccount.biography || 'Connected Instagram Creator Account • Managed via InstaMngmt Hub.'}
-                  </p>
-
-                  {/* Tags */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Tag size={12} color="#94A3B8" />
-                      <span>#SocialMedia</span>
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>#InstaMngmt</span>
-                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>#MetaGraphAPI</span>
-                  </div>
-                </div>
-
-                {/* UserId (meaning ID given while adding account) */}
-                <div
-                  style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '14px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      User ID (Given while adding)
-                    </div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginTop: '2px', fontFamily: 'monospace' }}>
-                      {selectedProfileAccount.igUserId}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(selectedProfileAccount.igUserId);
-                      setCopiedUserId(true);
-                      setTimeout(() => setCopiedUserId(false), 2000);
-                    }}
-                    title="Copy User ID"
-                    style={{
-                      background: '#FFFFFF',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '8px',
-                      padding: '6px 10px',
-                      color: '#475569',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    {copiedUserId ? <Check size={14} color="#059669" /> : <Copy size={14} />}
-                    <span>{copiedUserId ? 'Copied!' : 'Copy'}</span>
+                    <X size={17} strokeWidth={2.5} />
                   </button>
                 </div>
 
-                {/* Key (Access Token) with Edit option */}
-                <div
-                  style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '14px',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Key size={13} color="#2563EB" />
-                      <span>Access Token / Key</span>
+                {/* 2. Scrollable Profile Body */}
+                <div style={{ padding: '20px 22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Profile Header Row (DP + Stats) */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
+                    {/* Profile Picture with Instagram Gradient Story Ring */}
+                    <div
+                      style={{
+                        width: '84px',
+                        height: '84px',
+                        minWidth: '84px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                        padding: '3px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 6px 16px rgba(225, 48, 108, 0.25)'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          background: '#FFFFFF',
+                          padding: '2px',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {selectedProfileAccount.profilePictureUrl ? (
+                          <img
+                            src={selectedProfileAccount.profilePictureUrl}
+                            alt={selectedProfileAccount.username}
+                            referrerPolicy="no-referrer"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '1.5rem',
+                              borderRadius: '50%'
+                            }}
+                          >
+                            {selectedProfileAccount.username.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* 3 Stats Columns */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flex: 1,
+                        justifyContent: 'space-around',
+                        textAlign: 'center',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '16px',
+                        padding: '12px 10px'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
+                          {selectedProfileAccount.mediaCount ?? 0}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>Posts</div>
+                      </div>
+                      <div style={{ borderLeft: '1px solid #E2E8F0', height: '32px' }} />
+                      <div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
+                          {selectedProfileAccount.followersCount
+                            ? (selectedProfileAccount.followersCount >= 1000
+                                ? (selectedProfileAccount.followersCount / 1000).toFixed(1) + 'K'
+                                : selectedProfileAccount.followersCount)
+                            : 0}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>Followers</div>
+                      </div>
+                      <div style={{ borderLeft: '1px solid #E2E8F0', height: '32px' }} />
+                      <div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
+                          {selectedProfileAccount.followingCount
+                            ? (selectedProfileAccount.followingCount >= 1000
+                                ? (selectedProfileAccount.followingCount / 1000).toFixed(1) + 'K'
+                                : selectedProfileAccount.followingCount)
+                            : 0}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>Following</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Identity, Tags & Bio */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1.02rem', color: '#0F172A' }}>
+                        {selectedProfileAccount.username}
+                      </span>
+                      <span
+                        style={{
+                          background: '#F1F5F9',
+                          color: '#475569',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700
+                        }}
+                      >
+                        {selectedProfileAccount.category || 'Digital Creator & Business'}
+                      </span>
+                      <span
+                        style={{
+                          background: '#EFF6FF',
+                          color: '#2563EB',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700
+                        }}
+                      >
+                        #{selectedProfileAccount.accountType || 'BUSINESS'}
+                      </span>
+                    </div>
+
+                    {/* Biography */}
+                    <p style={{ fontSize: '0.86rem', color: '#334155', lineHeight: '1.4', margin: 0, whiteSpace: 'pre-line' }}>
+                      {selectedProfileAccount.biography || 'Best short films, movie scenes, and clips.'}
+                    </p>
+
+                    {/* Tags */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Tag size={12} color="#94A3B8" />
+                        <span>#SocialMedia</span>
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>#InstaMngmt</span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>#MetaGraphAPI</span>
+                    </div>
+                  </div>
+
+                  {/* UserId Card */}
+                  <div
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        User ID (Given while adding)
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0F172A', marginTop: '2px', fontFamily: 'monospace' }}>
+                        {selectedProfileAccount.igUserId}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedProfileAccount.igUserId);
+                        setCopiedUserId(true);
+                        setTimeout(() => setCopiedUserId(false), 2000);
+                      }}
+                      title="Copy User ID"
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '8px',
+                        padding: '5px 10px',
+                        color: '#475569',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {copiedUserId ? <Check size={14} color="#059669" /> : <Copy size={14} />}
+                      <span>{copiedUserId ? 'Copied!' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  {/* Key (Access Token) with Edit option */}
+                  <div
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Key size={13} color="#2563EB" />
+                        <span>Access Token / Key</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setUpdatingTokenAccount(selectedProfileAccount);
+                          setNewTokenInput('');
+                          setUpdateTokenError('');
+                        }}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          color: '#2563EB',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Edit3 size={12} />
+                        <span>Edit Key</span>
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '8px',
+                        padding: '7px 10px',
+                        fontFamily: 'monospace',
+                        fontSize: '0.8rem',
+                        color: '#334155',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        wordBreak: 'break-all',
+                        gap: '10px'
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {showKey
+                          ? selectedProfileAccount.accessToken || 'No key loaded'
+                          : (selectedProfileAccount.accessToken
+                              ? `${selectedProfileAccount.accessToken.slice(0, 10)}••••••••••••••••${selectedProfileAccount.accessToken.slice(-6)}`
+                              : '••••••••••••••••••••••••••••••••')}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => setShowKey(!showKey)}
+                          title={showKey ? 'Hide Key' : 'Reveal Key'}
+                          style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '2px' }}
+                        >
+                          {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                        {selectedProfileAccount.accessToken && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedProfileAccount.accessToken || '');
+                              setCopiedKey(true);
+                              setTimeout(() => setCopiedKey(false), 2000);
+                            }}
+                            title="Copy Key"
+                            style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '2px' }}
+                          >
+                            {copiedKey ? <Check size={16} color="#059669" /> : <Copy size={16} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Token Expiry with Dynamic Live Running Countdown */}
+                  {(() => {
+                    const countdown = calculateTokenCountdown(selectedProfileAccount.tokenExpiresAt);
+                    return (
+                      <div
+                        style={{
+                          background: countdown.expired ? '#FEF2F2' : '#F0FDF4',
+                          border: countdown.expired ? '1px solid #FECACA' : '1px solid #BBF7D0',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: countdown.expired ? '#DC2626' : '#15803D' }}>
+                            <Clock size={14} />
+                            <span>Token Expiry & Live Countdown</span>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: countdown.expired ? '#DC2626' : '#16A34A',
+                              color: '#FFFFFF'
+                            }}
+                          >
+                            {countdown.expired ? 'EXPIRED' : 'ACTIVE'}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: countdown.expired ? '#B91C1C' : '#166534', fontFamily: 'monospace' }}>
+                          {countdown.text}
+                        </div>
+
+                        {selectedProfileAccount.tokenExpiresAt && (
+                          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                            Expires on: {new Date(selectedProfileAccount.tokenExpiresAt).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Action Buttons: Refresh Token | Edit Key | Remove | Close */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', marginTop: '4px' }}>
+                    {/* Refresh Token Button */}
+                    <button
+                      onClick={() => handleRefreshToken(selectedProfileAccount.id)}
+                      disabled={refreshingAccountId === selectedProfileAccount.id}
+                      style={{
+                        background: 'linear-gradient(135deg, #10B981, #059669)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                      }}
+                    >
+                      <RefreshCw size={14} className={refreshingAccountId === selectedProfileAccount.id ? 'animate-spin' : ''} />
+                      <span>{refreshingAccountId === selectedProfileAccount.id ? 'Refreshing...' : 'Refresh Token'}</span>
+                    </button>
+
+                    {/* Edit Key Button */}
                     <button
                       onClick={() => {
                         setUpdatingTokenAccount(selectedProfileAccount);
@@ -1653,202 +1846,74 @@ export const InstagramConnectPage: React.FC = () => {
                         setUpdateTokenError('');
                       }}
                       style={{
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        border: '1px solid rgba(59, 130, 246, 0.3)',
-                        color: '#2563EB',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
+                        background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
                         fontWeight: 700,
+                        fontSize: '0.84rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)'
                       }}
                     >
-                      <Edit3 size={12} />
+                      <Key size={14} />
                       <span>Edit Key</span>
                     </button>
-                  </div>
 
-                  <div
-                    style={{
-                      background: '#FFFFFF',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '8px',
-                      padding: '8px 12px',
-                      fontFamily: 'monospace',
-                      fontSize: '0.8rem',
-                      color: '#334155',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      wordBreak: 'break-all',
-                      gap: '10px'
-                    }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {showKey
-                        ? selectedProfileAccount.accessToken || 'No key loaded'
-                        : (selectedProfileAccount.accessToken
-                            ? `${selectedProfileAccount.accessToken.slice(0, 10)}••••••••••••••••••••••••${selectedProfileAccount.accessToken.slice(-6)}`
-                            : '••••••••••••••••••••••••••••••••')}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      <button
-                        onClick={() => setShowKey(!showKey)}
-                        title={showKey ? 'Hide Key' : 'Reveal Key'}
-                        style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '2px' }}
-                      >
-                        {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                      {selectedProfileAccount.accessToken && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedProfileAccount.accessToken || '');
-                            setCopiedKey(true);
-                            setTimeout(() => setCopiedKey(false), 2000);
-                          }}
-                          title="Copy Key"
-                          style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '2px' }}
-                        >
-                          {copiedKey ? <Check size={16} color="#059669" /> : <Copy size={16} />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Token Expiry with Dynamic Live Running Countdown */}
-                {(() => {
-                  const countdown = calculateTokenCountdown(selectedProfileAccount.tokenExpiresAt);
-                  return (
-                    <div
+                    {/* Remove Account Button */}
+                    <button
+                      onClick={() => handleDisconnectAccount(selectedProfileAccount.id)}
                       style={{
-                        background: countdown.expired ? '#FEF2F2' : '#F0FDF4',
-                        border: countdown.expired ? '1px solid #FECACA' : '1px solid #BBF7D0',
-                        borderRadius: '14px',
-                        padding: '14px 16px',
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        color: '#DC2626',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
                         display: 'flex',
-                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         gap: '6px'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: countdown.expired ? '#DC2626' : '#15803D' }}>
-                          <Clock size={15} />
-                          <span>Token Expiry & Live Countdown</span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            background: countdown.expired ? '#DC2626' : '#16A34A',
-                            color: '#FFFFFF'
-                          }}
-                        >
-                          {countdown.expired ? 'EXPIRED' : 'ACTIVE'}
-                        </span>
-                      </div>
+                      <Trash2 size={14} />
+                      <span>Remove</span>
+                    </button>
 
-                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: countdown.expired ? '#B91C1C' : '#166534', fontFamily: 'monospace' }}>
-                        {countdown.text}
-                      </div>
-
-                      {selectedProfileAccount.tokenExpiresAt && (
-                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                          Expires on: {new Date(selectedProfileAccount.tokenExpiresAt).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Action Buttons: Refresh Token | Edit Key | Remove Account */}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
-                  {/* Refresh Token Button */}
-                  <button
-                    onClick={() => handleRefreshToken(selectedProfileAccount.id)}
-                    disabled={refreshingAccountId === selectedProfileAccount.id}
-                    style={{
-                      flex: 1,
-                      minWidth: '130px',
-                      background: 'linear-gradient(135deg, #10B981, #059669)',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '11px 16px',
-                      fontWeight: 700,
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-                    }}
-                  >
-                    <RefreshCw size={16} className={refreshingAccountId === selectedProfileAccount.id ? 'animate-spin' : ''} />
-                    <span>{refreshingAccountId === selectedProfileAccount.id ? 'Refreshing...' : 'Refresh Token'}</span>
-                  </button>
-
-                  {/* Edit Key Button */}
-                  <button
-                    onClick={() => {
-                      setUpdatingTokenAccount(selectedProfileAccount);
-                      setNewTokenInput('');
-                      setUpdateTokenError('');
-                    }}
-                    style={{
-                      flex: 1,
-                      minWidth: '120px',
-                      background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '11px 16px',
-                      fontWeight: 700,
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                    }}
-                  >
-                    <Key size={16} />
-                    <span>Edit Key</span>
-                  </button>
-
-                  {/* Remove Account Button */}
-                  <button
-                    onClick={() => handleDisconnectAccount(selectedProfileAccount.id)}
-                    style={{
-                      background: '#FEE2E2',
-                      border: '1px solid #FECACA',
-                      color: '#DC2626',
-                      borderRadius: '12px',
-                      padding: '11px 16px',
-                      fontWeight: 700,
-                      fontSize: '0.88rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Trash2 size={16} />
-                    <span>Remove</span>
-                  </button>
+                    {/* Explicit Close Button */}
+                    <button
+                      onClick={() => setSelectedProfileAccount(null)}
+                      style={{
+                        background: '#F1F5F9',
+                        border: '1px solid #CBD5E1',
+                        color: '#475569',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <X size={14} />
+                      <span>Close</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </div>
     );
   };
