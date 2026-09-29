@@ -1,0 +1,40 @@
+spring:
+  profiles:
+    active: dev
+  application:
+    name: instamngmt-backend
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+instagram:
+  graph-api-base-url: ${INSTAGRAM_GRAPH_API_BASE_URL:https://graph.facebook.com}
+  api-version: v23.0
+  app-id: ${INSTAGRAM_APP_ID:dummy-app-id}
+  app-secret: ${INSTAGRAM_APP_SECRET:dummy-app-secret}
+
+jwt:
+  secret: ${JWT_SECRET:9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b}
+  access-token-expiration-ms: 86400000 # 24 hours
+  refresh-token-expiration-ms: 604800000 # 7 days
+
+app:
+  storage:
+    local-dir: ${MEDIA_STORAGE_DIR:./uploads}
+    public-url-prefix: ${PUBLIC_URL_PREFIX:http://localhost:8080/uploads/}
+  kms:
+    master-key: ${KMS_MASTER_KEY:instamngmt-local-master-key-aes256secretkey!}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

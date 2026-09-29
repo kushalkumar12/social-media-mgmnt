@@ -1,0 +1,16 @@
+package com.instamngmt.entity;
+
+public enum PostStatus {
+    DRAFT,
+    SCHEDULED,
+    QUEUED,
+    CREATING_CONTAINER,
+    CONTAINER_PROCESSING,
+    READY_TO_PUBLISH,
+    PUBLISHING,
+    PUBLISHED,
+    FAILED_RETRYABLE,
+    FAILED_TERMINAL,
+    CANCELLED,
+    EXPIRED
+}
