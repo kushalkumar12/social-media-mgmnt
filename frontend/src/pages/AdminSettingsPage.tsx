@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { siteSettingService, SiteSetting } from '../services/siteSettingService';
-import { Shield, ToggleLeft, ToggleRight, CheckCircle, AlertCircle, RefreshCw, Key, Settings, Server, Lock } from 'lucide-react';
+import { Shield, ToggleLeft, ToggleRight, CheckCircle, AlertCircle, RefreshCw, Key, Settings } from 'lucide-react';
 
 export const AdminSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SiteSetting[]>([]);
@@ -50,137 +50,137 @@ export const AdminSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade" style={{ paddingBottom: '40px' }}>
+    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #833AB4, #FD1D1D)',
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+              width: '42px',
+              height: '42px',
+              borderRadius: 'var(--radius-md)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(131, 58, 180, 0.4)'
-            }}>
-              <Shield color="#fff" size={22} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Site Maintainer Control Panel</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '2px' }}>
-                Global configuration, feature flags, and security settings
-              </p>
-            </div>
+              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+              color: '#FFFFFF',
+            }}
+          >
+            <Shield size={22} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Site Maintainer Control Panel</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '2px' }}>
+              Global configuration registry, feature flags, and security controls.
+            </p>
           </div>
         </div>
+
         <button
           onClick={fetchSettings}
           className="btn-secondary"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ gap: '8px' }}
           disabled={loading}
         >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Refresh
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          <span>Refresh</span>
         </button>
       </div>
 
       {message && (
-        <div style={{
-          background: 'rgba(16, 185, 129, 0.12)',
-          border: '1px solid rgba(16, 185, 129, 0.25)',
-          color: '#047857',
-          padding: '14px 18px',
-          borderRadius: '12px',
-          fontSize: '0.9rem',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <CheckCircle size={20} />
+        <div
+          style={{
+            background: 'var(--accent-green-light)',
+            border: '1px solid var(--accent-green-border)',
+            color: 'var(--accent-green)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <CheckCircle size={18} />
           <span>{message}</span>
         </div>
       )}
 
       {error && (
-        <div style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          color: '#B91C1C',
-          padding: '14px 18px',
-          borderRadius: '12px',
-          fontSize: '0.9rem',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <AlertCircle size={20} />
+        <div
+          style={{
+            background: 'var(--accent-red-light)',
+            border: '1px solid var(--accent-red-border)',
+            color: 'var(--accent-red)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <AlertCircle size={18} />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Main Feature Flag Card */}
-      <div className="glass-card" style={{ padding: '28px', marginBottom: '28px', borderRadius: '16px' }}>
+      {/* Feature Flag Card */}
+      <div className="glass-card" style={{ padding: '28px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ maxWidth: '580px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <Key size={20} color="var(--insta-purple)" />
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Registration OTP Verification Flag</h3>
+          <div style={{ maxWidth: '600px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Key size={18} color="var(--primary-blue)" />
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Registration OTP Verification Flag</h3>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.5 }}>
               Enable or disable mandatory OTP email verification during user registration.
               When turned <strong>OFF</strong>, new users register directly without needing an OTP code.
               When turned <strong>ON</strong>, users must enter a 6-digit OTP code to complete registration.
             </p>
-            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Current Status:</span>
-              <span style={{
-                background: otpEnabled ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.1)',
-                color: otpEnabled ? '#047857' : '#B91C1C',
-                border: `1px solid ${otpEnabled ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: otpEnabled ? '#10B981' : '#EF4444'
-                }} />
+            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Policy:</span>
+              <span
+                style={{
+                  background: otpEnabled ? 'var(--accent-green-light)' : 'var(--accent-red-light)',
+                  color: otpEnabled ? 'var(--accent-green)' : 'var(--accent-red)',
+                  border: `1px solid ${otpEnabled ? 'var(--accent-green-border)' : 'var(--accent-red-border)'}`,
+                  padding: '3px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    background: otpEnabled ? 'var(--accent-green)' : 'var(--accent-red)',
+                  }}
+                />
                 {otpEnabled ? 'OTP REQUIRED (ON)' : 'OTP DISABLED (OFF)'}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div>
             <button
               onClick={handleToggleOtp}
               disabled={updating}
+              className={otpEnabled ? 'btn-primary' : 'btn-secondary'}
               style={{
-                background: otpEnabled ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #6B7280, #4B5563)',
-                color: '#fff',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                boxShadow: otpEnabled ? '0 4px 16px rgba(16, 185, 129, 0.35)' : 'none',
-                transition: 'all 0.2s ease'
+                padding: '10px 20px',
+                fontSize: '0.9rem',
+                gap: '8px',
+                background: otpEnabled ? 'var(--accent-green)' : undefined,
               }}
             >
-              {otpEnabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+              {otpEnabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
               <span>{updating ? 'Updating...' : otpEnabled ? 'Turn OFF OTP' : 'Turn ON OTP'}</span>
             </button>
           </div>
@@ -188,61 +188,58 @@ export const AdminSettingsPage: React.FC = () => {
       </div>
 
       {/* Configuration Settings Table */}
-      <div className="glass-card" style={{ padding: '24px', borderRadius: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <Settings size={20} color="var(--insta-pink)" />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>System Configurations Registry</h3>
+      <div className="glass-card" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Settings size={18} color="var(--primary-blue)" />
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>System Configurations Registry</h3>
         </div>
 
         {loading ? (
-          <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading configuration...</div>
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading configuration registry...
+          </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="table-container">
+            <table className="saas-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <th style={{ padding: '12px' }}>KEY</th>
-                  <th style={{ padding: '12px' }}>VALUE</th>
-                  <th style={{ padding: '12px' }}>DESCRIPTION</th>
-                  <th style={{ padding: '12px' }}>ACTION</th>
+                <tr>
+                  <th>Configuration Key</th>
+                  <th>Value</th>
+                  <th>Description</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {settings.map((item) => (
-                  <tr key={String(item.key)} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
-                    <td style={{ padding: '14px 12px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--insta-purple)' }}>
+                  <tr key={String(item.key)}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary-blue)' }}>
                       {item.key}
                     </td>
-                    <td style={{ padding: '14px 12px' }}>
-                      <span style={{
-                        background: 'var(--bg-card-hover)',
-                        border: '1px solid var(--border-color)',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontFamily: 'monospace',
-                        fontWeight: 700
-                      }}>
+                    <td>
+                      <span
+                        style={{
+                          background: '#F1F5F9',
+                          border: '1px solid var(--border-color)',
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontFamily: 'monospace',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                        }}
+                      >
                         {item.value}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 12px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
                       {item.description}
                     </td>
-                    <td style={{ padding: '14px 12px' }}>
+                    <td style={{ textAlign: 'right' }}>
                       {item.key === 'REGISTRATION_OTP_ENABLED' && (
                         <button
                           onClick={handleToggleOtp}
                           disabled={updating}
-                          style={{
-                            background: 'transparent',
-                            color: 'var(--insta-pink)',
-                            border: '1px solid var(--insta-pink)',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
+                          className="btn-secondary"
+                          style={{ padding: '4px 10px', fontSize: '0.78rem' }}
                         >
                           Toggle State
                         </button>

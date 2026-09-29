@@ -1,60 +1,91 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { Instagram, LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
-export const Navbar: React.FC = () => {
-  const { user, logout } = useAuth();
+interface NavbarProps {
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen = true }) => {
+  const location = useLocation();
+
+  // Map route to friendly breadcrumb title
+  const getPageTitle = (path: string): string => {
+    if (path.startsWith('/dashboard')) return 'Publishing Command Center';
+    if (path.startsWith('/posts/create')) return 'Create New Post';
+    if (path.startsWith('/posts')) return 'Scheduled Posts & Queues';
+    if (path.startsWith('/calendar')) return 'Editorial Calendar';
+    if (path.startsWith('/media')) return 'Media Assets Library';
+    if (path.startsWith('/instagram/accounts')) return 'Account Management';
+    if (path.startsWith('/plans')) return 'Subscription Plans';
+    if (path.startsWith('/settings')) return 'Meta Compliance & Webhooks';
+    if (path.startsWith('/admin/settings')) return 'Site Administration';
+    return 'Dashboard';
+  };
 
   return (
-    <header style={{
-      height: '70px',
-      background: 'rgba(255, 255, 255, 0.85)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      borderBottom: '1px solid var(--border-color)',
-      padding: '0 32px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100
-    }}>
+    <header className="main-content-header">
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{
-          background: 'var(--insta-gradient)',
-          width: '38px',
-          height: '38px',
-          borderRadius: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(225, 48, 108, 0.3)'
-        }}>
-          <Instagram size={22} color="#fff" />
-        </div>
-        <div>
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif', background: 'var(--insta-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            InstaPulse
+        {/* Dynamic Context Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {!isSidebarOpen && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: 'var(--text-muted)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+              }}
+              className="hide-on-mobile"
+            >
+              <span>InstaPulse</span>
+              <span>/</span>
+            </div>
+          )}
+          <span
+            style={{
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+            }}
+          >
+            {getPageTitle(location.pathname)}
           </span>
         </div>
       </div>
 
-      {user && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-card-hover)', padding: '6px 14px', borderRadius: '30px', border: '1px solid var(--border-color)' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--insta-gradient)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{user.name}</span>
-          </div>
-
-          <button onClick={logout} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
+      {/* Right Header Status Telemetry */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'var(--accent-green-light)',
+            color: 'var(--accent-green)',
+            border: '1px solid var(--accent-green-border)',
+            padding: '4px 10px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+          }}
+          title="Meta Graph API v19.0 Connection Healthy"
+        >
+          <div
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent-green)',
+              boxShadow: '0 0 6px var(--accent-green)',
+            }}
+          />
+          <span className="hide-on-mobile">Meta Graph API v19.0 Active</span>
+          <span style={{ display: 'none' }} className="show-on-mobile-inline">Active</span>
         </div>
-      )}
+      </div>
     </header>
   );
 };

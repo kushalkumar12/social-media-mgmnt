@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Instagram, ArrowRight, Lock, User as UserIcon, Shield } from 'lucide-react';
+import { Instagram, ArrowRight, Lock, User as UserIcon, Shield, Info } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDemoHint, setShowDemoHint] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +20,7 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email: email.trim(), password });
       login(res.data);
       if (res.data.user?.role === 'ADMIN') {
         navigate('/admin/settings');
@@ -26,115 +28,156 @@ export const LoginPage: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check credentials.');
+      setError(err.response?.data?.message || 'Authentication failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAdminQuickFill = () => {
+  const fillDemoAdmin = () => {
     setEmail('admin');
     setPassword('admin');
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-fade" style={{ width: '100%', maxWidth: '440px', padding: '40px' }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        background: 'var(--bg-main)',
+      }}
+    >
+      <div
+        className="glass-card animate-fade"
+        style={{
+          width: '100%',
+          maxWidth: '420px',
+          padding: '36px 32px',
+        }}
+      >
+        {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '14px',
-            background: 'var(--insta-gradient)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px auto',
-            boxShadow: '0 8px 24px rgba(225, 48, 108, 0.4)'
-          }}>
-            <Instagram size={30} color="#fff" />
+          <div
+            style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--insta-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto',
+              boxShadow: '0 8px 20px rgba(225, 48, 108, 0.3)',
+            }}
+          >
+            <Instagram size={28} color="#FFFFFF" />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Welcome to InstaPulse</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
-            Instagram Content Publishing & Scheduling Suite
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Welcome to InstaPulse</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '4px' }}>
+            Instagram Content Publishing & Automation Suite
           </p>
         </div>
 
-        {/* Quick Admin Helper Badge */}
-        <div style={{
-          background: 'rgba(124, 58, 237, 0.08)',
-          border: '1px solid rgba(124, 58, 237, 0.2)',
-          padding: '10px 14px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '0.82rem',
-          color: '#7C3AED'
-        }}>
+        {/* Demo Helper Pill */}
+        <div
+          style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border-color)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '20px',
+            fontSize: '0.8rem',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Shield size={16} />
-            <span>Site Maintainer Login: <strong>admin</strong> / <strong>admin</strong></span>
+            <Shield size={14} color="#7C3AED" />
+            <span>Developer / Maintainer demo login available</span>
           </div>
           <button
             type="button"
-            onClick={handleAdminQuickFill}
+            onClick={fillDemoAdmin}
             style={{
-              background: '#7C3AED',
-              border: 'none',
-              color: '#fff',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-              fontWeight: 600
+              color: 'var(--primary-blue)',
+              fontWeight: 600,
+              fontSize: '0.78rem',
+              textDecoration: 'underline',
             }}
           >
-            Auto-fill
+            Use demo
           </button>
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#B91C1C', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
+          <div
+            style={{
+              background: 'var(--accent-red-light)',
+              border: '1px solid var(--accent-red-border)',
+              color: 'var(--accent-red)',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              marginBottom: '20px',
+            }}
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Username or Email</label>
+            <label className="form-label" htmlFor="login-email">
+              Username or Email
+            </label>
             <div style={{ position: 'relative' }}>
-              <UserIcon size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+              <UserIcon
+                size={16}
+                color="var(--text-muted)"
+                style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}
+              />
               <input
+                id="login-email"
                 type="text"
                 className="form-input"
-                style={{ width: '100%', paddingLeft: '42px' }}
+                style={{ paddingLeft: '40px' }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin or user@example.com"
+                placeholder="Enter username or email"
                 required
+                autoFocus
               />
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '16px' }}>
+          <div className="form-group" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">Password</label>
-              <Link to="/forgot-password" style={{ fontSize: '0.75rem', color: 'var(--insta-pink)' }}>Forgot password?</Link>
+              <label className="form-label" htmlFor="login-password">
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                style={{ fontSize: '0.76rem', color: 'var(--primary-blue)', fontWeight: 600 }}
+              >
+                Forgot password?
+              </Link>
             </div>
             <div style={{ position: 'relative' }}>
-              <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Lock
+                size={16}
+                color="var(--text-muted)"
+                style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}
+              />
               <input
+                id="login-password"
                 type="password"
                 className="form-input"
-                style={{ width: '100%', paddingLeft: '42px' }}
+                style={{ paddingLeft: '40px' }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -143,15 +186,22 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ width: '100%', padding: '12px', fontSize: '0.92rem' }}
+            disabled={loading}
+          >
             <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
-            <ArrowRight size={18} />
+            <ArrowRight size={16} />
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
           Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--insta-pink)', fontWeight: 600 }}>Create Account</Link>
+          <Link to="/register" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>
+            Create Account
+          </Link>
         </div>
       </div>
     </div>

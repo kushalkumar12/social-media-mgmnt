@@ -51,6 +51,8 @@ public class ExcelDTOs {
     public static class CommitBatchRequest {
         private Long batchId;
         private Long defaultInstagramAccountId;
+        private Long targetGroupId;
+        private List<Long> targetAccountIds;
         private List<Integer> selectedRowIndices; // if null/empty, commits all valid rows
     }
 

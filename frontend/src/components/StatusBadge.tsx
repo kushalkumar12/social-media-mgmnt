@@ -11,7 +11,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     case 'PUBLISHED':
       return (
         <span className="badge badge-published">
-          <CheckCircle2 size={12} />
+          <CheckCircle2 size={13} />
           Published
         </span>
       );

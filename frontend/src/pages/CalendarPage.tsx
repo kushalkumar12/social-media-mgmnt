@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { ScheduledPost } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Skeleton } from '../components/common/Skeleton';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const CalendarPage: React.FC = () => {
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -10,13 +12,13 @@ export const CalendarPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    // Fetch month range
+    setLoading(true);
     const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
     const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
     api.get(`/posts/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
       .then((res) => setPosts(res.data))
-      .catch((err) => console.error(err))
+      .catch((err) => console.error('Failed to load calendar events', err))
       .finally(() => setLoading(false));
   }, [currentDate]);
 
@@ -29,84 +31,204 @@ export const CalendarPage: React.FC = () => {
   const handleNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
 
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date();
 
   return (
     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Publishing Calendar</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Publishing Calendar</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
             Visual schedule map of upcoming, published, and failed Instagram posts.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={handlePrevMonth} className="btn-secondary" style={{ padding: '8px 12px' }}>
-            <ChevronLeft size={18} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={handleToday} className="btn-secondary" style={{ padding: '8px 12px', fontSize: '0.82rem' }}>
+            Today
           </button>
-          <span style={{ fontSize: '1.2rem', fontWeight: 700, minWidth: '160px', textAlign: 'center' }}>
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </span>
-          <button onClick={handleNextMonth} className="btn-secondary" style={{ padding: '8px 12px' }}>
-            <ChevronRight size={18} />
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#FFFFFF', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
+            <button
+              onClick={handlePrevMonth}
+              aria-label="Previous Month"
+              style={{ padding: '6px 8px', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)' }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, minWidth: '150px', textAlign: 'center' }}>
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              aria-label="Next Month"
+              style={{ padding: '6px 8px', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)' }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <Link to="/posts/create" className="btn-primary">
+            <PlusCircle size={16} />
+            <span className="hide-on-mobile">Create Post</span>
+          </Link>
         </div>
       </div>
 
-      <div className="glass-card" style={{ padding: '24px' }}>
-        {/* Days Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px', textAlign: 'center', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-        </div>
+      {/* Calendar Grid Container */}
+      <div className="glass-card" style={{ padding: '20px', overflowX: 'auto' }}>
+        <div style={{ minWidth: '780px' }}>
+          {/* Days Header */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, 1fr)',
+              gap: '8px',
+              marginBottom: '10px',
+              textAlign: 'center',
+              fontWeight: 600,
+              fontSize: '0.82rem',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {dayHeaders.map((d) => (
+              <div key={d} style={{ padding: '4px' }}>
+                {d}
+              </div>
+            ))}
+          </div>
 
-        {/* Days Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
-          {Array.from({ length: firstDayIndex }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ minHeight: '100px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px dashed var(--border-color)' }} />
-          ))}
+          {/* Days Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+            {/* Previous month trailing days */}
+            {Array.from({ length: firstDayIndex }).map((_, i) => (
+              <div
+                key={`empty-${i}`}
+                style={{
+                  minHeight: '110px',
+                  background: 'var(--bg-main)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px dashed var(--border-color)',
+                  opacity: 0.5,
+                }}
+              />
+            ))}
 
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const dayNum = i + 1;
-            const dayPosts = posts.filter((p) => {
-              const pDate = new Date(p.scheduledAt);
-              return pDate.getDate() === dayNum && pDate.getMonth() === currentDate.getMonth() && pDate.getFullYear() === currentDate.getFullYear();
-            });
+            {/* Current month days */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const isCurrentDay =
+                today.getDate() === dayNum &&
+                today.getMonth() === currentDate.getMonth() &&
+                today.getFullYear() === currentDate.getFullYear();
 
-            return (
-              <div key={dayNum} style={{
-                minHeight: '100px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                padding: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{dayNum}</div>
-                {dayPosts.map((post) => (
-                  <div key={post.id} style={{
-                    background: 'var(--bg-card-hover)',
-                    padding: '4px 6px',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
+              const dayPosts = posts.filter((p) => {
+                const pDate = new Date(p.scheduledAt);
+                return (
+                  pDate.getDate() === dayNum &&
+                  pDate.getMonth() === currentDate.getMonth() &&
+                  pDate.getFullYear() === currentDate.getFullYear()
+                );
+              });
+
+              return (
+                <div
+                  key={dayNum}
+                  style={{
+                    minHeight: '110px',
+                    background: '#FFFFFF',
+                    border: isCurrentDay ? '2px solid var(--primary-blue)' : '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '2px',
-                    borderLeft: '3px solid var(--insta-pink)',
-                    border: '1px solid var(--border-color)',
-                    borderLeftWidth: '3px',
-                    borderLeftColor: 'var(--insta-pink)'
-                  }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{post.instagramUsername}</div>
-                    <StatusBadge status={post.status} />
+                    gap: '6px',
+                    boxShadow: 'var(--shadow-xs)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        color: isCurrentDay ? 'var(--primary-blue)' : 'var(--text-secondary)',
+                        width: isCurrentDay ? '22px' : 'auto',
+                        height: isCurrentDay ? '22px' : 'auto',
+                        borderRadius: isCurrentDay ? '50%' : 'none',
+                        background: isCurrentDay ? 'var(--primary-blue-light)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {dayNum}
+                    </span>
+                    {dayPosts.length > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        {dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-            );
-          })}
+
+                  {/* Day Posts List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto', maxHeight: '100px' }}>
+                    {loading ? (
+                      <Skeleton height={18} borderRadius="4px" />
+                    ) : (
+                      dayPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          style={{
+                            background: 'var(--bg-main)',
+                            padding: '4px 6px',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                          borderLeft: post.status === 'PUBLISHED' ? '3px solid var(--accent-green)' : '3px solid var(--primary-blue)',
+                          border: '1px solid var(--border-color)',
+                          borderLeftWidth: '3px',
+                        }}
+                        title={`@${post.instagramUsername}: ${post.caption || 'No caption'}`}
+                      >
+                        <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          @{post.instagramUsername}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                          <span>{new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{ fontWeight: 600 }}>{post.postType}</span>
+                        </div>
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

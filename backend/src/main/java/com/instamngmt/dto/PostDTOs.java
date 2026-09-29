@@ -17,8 +17,9 @@ public class PostDTOs {
     @AllArgsConstructor
     @Builder
     public static class CreatePostRequest {
-        @NotNull(message = "Instagram account ID is required")
         private Long instagramAccountId;
+        private Long accountGroupId;
+        private List<Long> instagramAccountIds;
 
         private String caption;
 

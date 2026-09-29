@@ -59,12 +59,14 @@ export const excelService = {
   commitBatch: async (
     batchId: number,
     defaultInstagramAccountId?: number,
-    selectedRowIndices?: number[]
+    selectedRowIndices?: number[],
+    targetGroupId?: number
   ): Promise<CommitBatchResponse> => {
     const response = await api.post('/posts/commit-excel-batch', {
       batchId,
       defaultInstagramAccountId,
-      selectedRowIndices
+      selectedRowIndices,
+      targetGroupId
     });
     return response.data;
   }

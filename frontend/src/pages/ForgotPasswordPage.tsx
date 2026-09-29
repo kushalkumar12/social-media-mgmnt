@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Instagram, ArrowRight, Lock, Mail, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Instagram, ArrowRight, Lock, Mail, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -62,97 +62,135 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-fade" style={{ width: '100%', maxWidth: '440px', padding: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '14px',
-            background: 'var(--insta-gradient)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px auto',
-            boxShadow: '0 8px 24px rgba(225, 48, 108, 0.4)'
-          }}>
-            <Instagram size={30} color="#fff" />
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        background: 'var(--bg-main)',
+      }}
+    >
+      <div className="glass-card animate-fade" style={{ width: '100%', maxWidth: '420px', padding: '36px 32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div
+            style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--insta-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto',
+              boxShadow: '0 8px 20px rgba(225, 48, 108, 0.3)',
+            }}
+          >
+            <Instagram size={28} color="#FFFFFF" />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-            {step === 1 ? 'Forgot Password' : 'Reset Your Password'}
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
-            {step === 1 ? 'Enter your registered email to receive a reset link' : 'Enter your reset token and choose a new password'}
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>
+            {step === 1 ? 'Forgot Password' : 'Reset Password'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '4px' }}>
+            {step === 1 ? 'Enter your registered email to receive a recovery token' : 'Enter your reset token and choose a new password'}
           </p>
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
-            {error}
+          <div
+            style={{
+              background: 'var(--accent-red-light)',
+              border: '1px solid var(--accent-red-border)',
+              color: 'var(--accent-red)',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 
         {message && (
-          <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34D399', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
-            {message}
+          <div
+            style={{
+              background: 'var(--accent-green-light)',
+              border: '1px solid var(--accent-green-border)',
+              color: 'var(--accent-green)',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+            <span>{message}</span>
           </div>
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleSendResetLink}>
-            <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">Registered Email Address</label>
+          <form onSubmit={handleSendResetLink} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="forgot-email">Registered Email Address</label>
               <div style={{ position: 'relative' }}>
-                <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="forgot-email"
                   type="email"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="user@example.com"
                   required
+                  autoFocus
                 />
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
-              <span>{loading ? 'Sending link...' : 'Send Password Reset Link'}</span>
-              <ArrowRight size={18} />
+            <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }} disabled={loading}>
+              <span>{loading ? 'Sending link...' : 'Send Recovery Token'}</span>
+              <ArrowRight size={16} />
             </button>
           </form>
         ) : (
-          <form onSubmit={handleResetPassword}>
-            <div className="form-group">
-              <label className="form-label">Reset Token</label>
+          <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="reset-token">Reset Token</label>
               <div style={{ position: 'relative' }}>
-                <KeyRound size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <KeyRound size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="reset-token"
                   type="text"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={resetToken}
                   onChange={(e) => setResetToken(e.target.value)}
                   placeholder="Paste reset token here"
                   required
+                  autoFocus
                 />
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">New Password</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="new-pass">New Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="new-pass"
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
@@ -161,14 +199,15 @@ export const ForgotPasswordPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">Confirm New Password</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="new-confirm-pass">Confirm New Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="new-confirm-pass"
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
@@ -177,16 +216,18 @@ export const ForgotPasswordPage: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
-              <CheckCircle2 size={18} />
+            <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }} disabled={loading}>
+              <CheckCircle2 size={16} />
               <span>{loading ? 'Resetting Password...' : 'Save New Password'}</span>
             </button>
           </form>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
           Remembered your password?{' '}
-          <Link to="/login" style={{ color: 'var(--insta-pink)', fontWeight: 600 }}>Back to Sign In</Link>
+          <Link to="/login" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>
+            Sign In
+          </Link>
         </div>
       </div>
     </div>

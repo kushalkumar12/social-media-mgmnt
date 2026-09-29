@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { siteSettingService } from '../services/siteSettingService';
-import { Instagram, ArrowRight, Lock, Mail, User as UserIcon, KeyRound, CheckCircle2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Instagram, ArrowRight, Lock, Mail, User as UserIcon, KeyRound, CheckCircle2, ShieldCheck, ShieldAlert, AlertCircle } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const [otpRequired, setOtpRequired] = useState<boolean | null>(null);
@@ -119,83 +119,119 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-fade" style={{ width: '100%', maxWidth: '460px', padding: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '14px',
-            background: 'var(--insta-gradient)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px auto',
-            boxShadow: '0 8px 24px rgba(225, 48, 108, 0.4)'
-          }}>
-            <Instagram size={30} color="#fff" />
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        background: 'var(--bg-main)',
+      }}
+    >
+      <div className="glass-card animate-fade" style={{ width: '100%', maxWidth: '440px', padding: '36px 32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div
+            style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--insta-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto',
+              boxShadow: '0 8px 20px rgba(225, 48, 108, 0.3)',
+            }}
+          >
+            <Instagram size={28} color="#FFFFFF" />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-            {step === 1 ? 'Create Account' : 'Verify Email OTP'}
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
-            {step === 1 ? 'Free 15-day trial (1 Instagram Account)' : `Enter the 6-digit OTP code sent to ${email}`}
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>
+            {step === 1 ? 'Create Free Account' : 'Verify Email OTP'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '4px' }}>
+            {step === 1 ? 'Start your 15-day trial (1 Instagram Brand Account)' : `Enter the 6-digit code sent to ${email}`}
           </p>
         </div>
 
         {/* Site Settings OTP Status Indicator */}
         {otpRequired !== null && step === 1 && (
-          <div style={{
-            background: otpRequired ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-            border: `1px solid ${otpRequired ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '0.78rem',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            color: otpRequired ? '#60A5FA' : '#34D399'
-          }}>
-            {otpRequired ? <ShieldAlert size={15} /> : <ShieldCheck size={15} />}
+          <div
+            style={{
+              background: otpRequired ? 'var(--primary-blue-light)' : 'var(--accent-green-light)',
+              border: `1px solid ${otpRequired ? '#BFDBFE' : 'var(--accent-green-border)'}`,
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              color: otpRequired ? 'var(--primary-blue)' : 'var(--accent-green)',
+              fontWeight: 600,
+            }}
+          >
+            {otpRequired ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}
             <span>
               {otpRequired
-                ? 'Site Policy: OTP verification is mandatory for registration'
-                : 'Site Policy: OTP verification is currently turned OFF'}
+                ? 'OTP verification is required for new signups'
+                : 'Direct registration is enabled'}
             </span>
           </div>
         )}
 
         {error && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
-            {error}
+          <div
+            style={{
+              background: 'var(--accent-red-light)',
+              border: '1px solid var(--accent-red-border)',
+              color: 'var(--accent-red)',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 
         {message && (
-          <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34D399', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
-            {message}
+          <div
+            style={{
+              background: 'var(--accent-green-light)',
+              border: '1px solid var(--accent-green-border)',
+              color: 'var(--accent-green)',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+            <span>{message}</span>
           </div>
         )}
 
-        {/* Render Direct Register Form if OTP is disabled */}
         {otpRequired === false ? (
-          <form onSubmit={handleDirectRegister}>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
+          <form onSubmit={handleDirectRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="reg-name">Full Name</label>
               <div style={{ position: 'relative' }}>
-                <UserIcon size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <UserIcon size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="reg-name"
                   type="text"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
@@ -204,14 +240,15 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="reg-email">Email Address</label>
               <div style={{ position: 'relative' }}>
-                <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="reg-email"
                   type="email"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="user@example.com"
@@ -220,14 +257,15 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Password</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="reg-pass">Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="reg-pass"
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -236,14 +274,15 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">Confirm Password</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="reg-confirm-pass">Confirm Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
+                  id="reg-confirm-pass"
                   type="password"
                   className="form-input"
-                  style={{ width: '100%', paddingLeft: '42px' }}
+                  style={{ paddingLeft: '40px' }}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
@@ -252,23 +291,23 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
-              <CheckCircle2 size={18} />
-              <span>{loading ? 'Registering...' : 'Register Now (No OTP)'}</span>
+            <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }} disabled={loading}>
+              <CheckCircle2 size={16} />
+              <span>{loading ? 'Creating Account...' : 'Register Account'}</span>
             </button>
           </form>
         ) : (
-          /* Render 2-Step OTP Registration Form if OTP is enabled */
           step === 1 ? (
-            <form onSubmit={handleSendOtp}>
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
+            <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="otp-name">Full Name</label>
                 <div style={{ position: 'relative' }}>
-                  <UserIcon size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <UserIcon size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
+                    id="otp-name"
                     type="text"
                     className="form-input"
-                    style={{ width: '100%', paddingLeft: '42px' }}
+                    style={{ paddingLeft: '40px' }}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="John Doe"
@@ -277,14 +316,15 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="otp-email">Email Address</label>
                 <div style={{ position: 'relative' }}>
-                  <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
+                    id="otp-email"
                     type="email"
                     className="form-input"
-                    style={{ width: '100%', paddingLeft: '42px' }}
+                    style={{ paddingLeft: '40px' }}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@example.com"
@@ -293,14 +333,15 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Password</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="otp-pass">Password</label>
                 <div style={{ position: 'relative' }}>
-                  <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
+                    id="otp-pass"
                     type="password"
                     className="form-input"
-                    style={{ width: '100%', paddingLeft: '42px' }}
+                    style={{ paddingLeft: '40px' }}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -309,14 +350,15 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label className="form-label">Confirm Password</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="otp-confirm-pass">Confirm Password</label>
                 <div style={{ position: 'relative' }}>
-                  <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
+                    id="otp-confirm-pass"
                     type="password"
                     className="form-input"
-                    style={{ width: '100%', paddingLeft: '42px' }}
+                    style={{ paddingLeft: '40px' }}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
@@ -325,51 +367,66 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
-                <span>{loading ? 'Sending OTP...' : 'Continue to Verification'}</span>
-                <ArrowRight size={18} />
+              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }} disabled={loading}>
+                <span>{loading ? 'Sending Code...' : 'Continue to Verification'}</span>
+                <ArrowRight size={16} />
               </button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp}>
+            <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {debugOtp && (
-                <div style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60A5FA', padding: '10px 14px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '20px', textAlign: 'center' }}>
-                  🔑 Testing OTP Code: <strong style={{ letterSpacing: '2px', fontSize: '1rem', marginLeft: '6px' }}>{debugOtp}</strong>
+                <div
+                  style={{
+                    background: 'var(--primary-blue-light)',
+                    border: '1px solid #BFDBFE',
+                    color: 'var(--primary-blue)',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.82rem',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                  }}
+                >
+                  Testing OTP Code: <strong style={{ letterSpacing: '2px', fontSize: '1rem', marginLeft: '6px' }}>{debugOtp}</strong>
                 </div>
               )}
 
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label className="form-label">Enter 6-Digit OTP Code</label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="otp-input-code">Enter 6-Digit Code</label>
                 <div style={{ position: 'relative' }}>
-                  <KeyRound size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <KeyRound size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
+                    id="otp-input-code"
                     type="text"
                     className="form-input"
-                    style={{ width: '100%', paddingLeft: '42px', letterSpacing: '4px', fontSize: '1.1rem', fontWeight: 'bold', textAlign: 'center' }}
+                    style={{ paddingLeft: '40px', letterSpacing: '4px', fontSize: '1.1rem', fontWeight: 'bold', textAlign: 'center' }}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
                     maxLength={6}
                     placeholder="123456"
                     required
+                    autoFocus
                   />
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} disabled={loading}>
-                <CheckCircle2 size={18} />
+              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }} disabled={loading}>
+                <CheckCircle2 size={16} />
                 <span>{loading ? 'Verifying...' : 'Verify OTP & Create Account'}</span>
               </button>
 
-              <button type="button" onClick={() => setStep(1)} className="btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: '12px' }}>
+              <button type="button" onClick={() => setStep(1)} className="btn-secondary" style={{ width: '100%', padding: '10px' }}>
                 Back to Registration
               </button>
             </form>
           )
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: 'var(--insta-pink)', fontWeight: 600 }}>Sign In</Link>
+          <Link to="/login" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>
+            Sign In
+          </Link>
         </div>
       </div>
     </div>

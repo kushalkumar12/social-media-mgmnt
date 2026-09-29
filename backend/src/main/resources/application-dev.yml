@@ -24,5 +24,7 @@ logging:
     org.springframework.security: INFO
 
 instagram:
-  graph-api-base-url: https://graph.facebook.com
+  provider: ${INSTAGRAM_PROVIDER:real}
+  graph-api-base-url: ${INSTAGRAM_GRAPH_API_BASE_URL:https://graph.facebook.com}
+  simulator-base-url: ${INSTAGRAM_SIMULATOR_BASE_URL:http://localhost:8085}
 

@@ -37,6 +37,7 @@ public class ExcelImportService {
     private final OutboxJobRepository outboxJobRepository;
     private final MediaRepository mediaRepository;
     private final InstagramAccountRepository instagramAccountRepository;
+    private final AccountGroupRepository accountGroupRepository;
 
     private static final List<DateTimeFormatter> DATE_ONLY_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
@@ -207,16 +208,46 @@ public class ExcelImportService {
 
         List<ExcelDTOs.ExcelRowPreview> rowPreviews = parseExcelRows(batch.getFileData());
 
-        // Determine target Instagram Account
-        InstagramAccount targetAccount = null;
-        if (request.getDefaultInstagramAccountId() != null) {
-            targetAccount = instagramAccountRepository.findById(request.getDefaultInstagramAccountId()).orElse(null);
-        }
-        if (targetAccount == null) {
-            targetAccount = instagramAccountRepository.findByUserId(user.getId()).stream().findFirst().orElse(null);
+        // Determine target Instagram Account(s)
+        List<InstagramAccount> targetAccounts = new ArrayList<>();
+
+        if (request.getTargetGroupId() != null) {
+            AccountGroup group = accountGroupRepository.findById(request.getTargetGroupId())
+                    .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "GROUP_NOT_FOUND", "Account group not found"));
+            if (!group.getUserId().equals(user.getId())) {
+                throw new APIException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied to this group");
+            }
+            if (group.getAccountIds() != null && !group.getAccountIds().isEmpty()) {
+                targetAccounts = instagramAccountRepository.findAllById(group.getAccountIds()).stream()
+                        .filter(acc -> acc.getUser().getId().equals(user.getId()))
+                        .toList();
+            }
+            if (targetAccounts.isEmpty()) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "EMPTY_GROUP",
+                        "The selected account group does not contain any connected accounts");
+            }
+        } else if (request.getTargetAccountIds() != null && !request.getTargetAccountIds().isEmpty()) {
+            targetAccounts = instagramAccountRepository.findAllById(request.getTargetAccountIds()).stream()
+                    .filter(acc -> acc.getUser().getId().equals(user.getId()))
+                    .toList();
+        } else if (request.getDefaultInstagramAccountId() != null) {
+            InstagramAccount targetAccount = instagramAccountRepository.findById(request.getDefaultInstagramAccountId()).orElse(null);
+            if (targetAccount != null && targetAccount.getUser().getId().equals(user.getId())) {
+                targetAccounts.add(targetAccount);
+            }
         }
 
-        final InstagramAccount accountToUse = targetAccount;
+        if (targetAccounts.isEmpty()) {
+            InstagramAccount defaultAcc = instagramAccountRepository.findByUserId(user.getId()).stream().findFirst().orElse(null);
+            if (defaultAcc != null) {
+                targetAccounts.add(defaultAcc);
+            }
+        }
+
+        if (targetAccounts.isEmpty()) {
+            throw new APIException(HttpStatus.BAD_REQUEST, "NO_TARGET_ACCOUNT",
+                    "No target Instagram account available. Please connect an account first.");
+        }
 
         // Filter rows by selection or valid status
         Set<Integer> selectedIndices = (request.getSelectedRowIndices() != null
@@ -234,18 +265,21 @@ public class ExcelImportService {
                     "No valid rows selected for scheduling");
         }
 
-        // Multithreaded persistence using Java ExecutorService
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(rowsToProcess.size(), 8));
+        // Multithreaded persistence using Java ExecutorService across all target accounts & rows
+        int totalTasks = rowsToProcess.size() * targetAccounts.size();
+        ExecutorService executor = Executors.newFixedThreadPool(Math.min(Math.max(totalTasks, 1), 8));
         List<Future<Boolean>> futures = new ArrayList<>();
 
-        for (ExcelDTOs.ExcelRowPreview row : rowsToProcess) {
-            futures.add(executor.submit(() -> processAndSaveSingleRow(user, accountToUse, row)));
+        for (InstagramAccount account : targetAccounts) {
+            for (ExcelDTOs.ExcelRowPreview row : rowsToProcess) {
+                futures.add(executor.submit(() -> processAndSaveSingleRow(user, account, row)));
+            }
         }
 
         int successCount = 0;
         for (Future<Boolean> future : futures) {
             try {
-                if (future.get(10, TimeUnit.SECONDS)) {
+                if (future.get(15, TimeUnit.SECONDS)) {
                     successCount++;
                 }
             } catch (Exception e) {
@@ -258,10 +292,14 @@ public class ExcelImportService {
         batch.setStatus("COMMITTED");
         bulkImportBatchRepository.save(batch);
 
+        String message = targetAccounts.size() > 1
+                ? String.format("Successfully scheduled %d post(s) across %d account(s) in group via multithreaded processing.", successCount, targetAccounts.size())
+                : String.format("Successfully scheduled %d post(s) via multithreaded processing.", successCount);
+
         return ExcelDTOs.CommitBatchResponse.builder()
                 .batchId(batch.getId())
                 .committedCount(successCount)
-                .message(String.format("Successfully scheduled %d post(s) via multithreaded processing.", successCount))
+                .message(message)
                 .build();
     }
 

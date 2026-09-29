@@ -13,7 +13,9 @@ spring:
       max-request-size: 100MB
 
 instagram:
+  provider: ${INSTAGRAM_PROVIDER:real} # 'real' or 'fake'
   graph-api-base-url: ${INSTAGRAM_GRAPH_API_BASE_URL:https://graph.facebook.com}
+  simulator-base-url: ${INSTAGRAM_SIMULATOR_BASE_URL:http://localhost:8085}
   api-version: v23.0
   app-id: ${INSTAGRAM_APP_ID:dummy-app-id}
   app-secret: ${INSTAGRAM_APP_SECRET:dummy-app-secret}

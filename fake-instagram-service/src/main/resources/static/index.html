@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake Instagram API Simulator — Control Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0c10;
+            --bg-card: rgba(18, 22, 34, 0.75);
+            --bg-card-hover: rgba(26, 32, 48, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.18);
+            --accent-pink: #e1306c;
+            --accent-purple: #833ab4;
+            --accent-orange: #fd1d1d;
+            --accent-blue: #38bdf8;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(131, 58, 180, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(225, 48, 108, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 40px;
+            background: rgba(10, 12, 16, 0.8);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(225, 48, 108, 0.4);
+        }
+
+        .logo-badge svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .title-block h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .title-block p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+
+        .status-pill .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        .scenario-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(131, 58, 180, 0.15);
+            border: 1px solid rgba(131, 58, 180, 0.35);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #d8b4fe;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: #ef4444;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #833ab4, #e1306c);
+            color: white;
+            box-shadow: 0 2px 10px rgba(225, 48, 108, 0.3);
+        }
+        .btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-hover);
+        }
+
+        /* Container & Grid */
+        .container {
+            max-width: 1380px;
+            margin: 30px auto;
+            padding: 0 24px;
+        }
+
+        /* Telemetry Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .label {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+
+        .stat-card .subtext {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .tab-btn.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            border-bottom: 2px solid var(--accent-pink);
+        }
+
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Scenarios Cards */
+        .scenarios-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .scenario-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+        .scenario-card:hover {
+            border-color: rgba(225, 48, 108, 0.4);
+            background: var(--bg-card-hover);
+        }
+
+        .scenario-card h3 {
+            font-size: 0.96rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scenario-card p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin-bottom: 16px;
+            flex-grow: 1;
+        }
+
+        /* Forms & Inputs */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .panel-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            background: rgba(10, 12, 16, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .form-control:focus {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 0 2px rgba(225, 48, 108, 0.2);
+        }
+
+        .quick-presets {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .preset-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .preset-chip:hover {
+            color: white;
+            border-color: var(--accent-pink);
+            background: rgba(225, 48, 108, 0.15);
+        }
+
+        /* Accounts Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(10, 12, 16, 0.8);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(225, 48, 108, 0.4);
+            background: #1e293b;
+        }
+
+        .username {
+            font-weight: 700;
+            color: white;
+        }
+
+        .fullname {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+
+        .badge-valid {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-expired {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-revoked {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .token-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-icon-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .action-icon-btn:hover {
+            color: white;
+            border-color: var(--border-hover);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Pagination Controls */
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(18, 22, 34, 0.95);
+            border: 1px solid var(--accent-pink);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-wrap">
+            <div class="logo-badge">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </div>
+            <div class="title-block">
+                <h1>Fake Instagram API Simulator</h1>
+                <p>Meta Graph API v23.0 &middot; Monolith Test Service</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="status-pill">
+                <span class="dot"></span>
+                <span>Port 8085 Online</span>
+            </div>
+            <div class="scenario-pill" id="currentScenarioPill">
+                Scenario: NORMAL
+            </div>
+            <button class="btn btn-danger" onclick="confirmResetAll()">
+                Reset Simulator Data
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+
+        <!-- Live Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Accounts</div>
+                <div class="value" id="statAccounts">0</div>
+                <div class="subtext">Simulated creators & businesses</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Published Media</div>
+                <div class="value" id="statPosts">0</div>
+                <div class="subtext">Posts, Reels & Carousels</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Active Tokens</div>
+                <div class="value" id="statTokens">0</div>
+                <div class="subtext">60-day Meta Bearer tokens</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Simulated Containers</div>
+                <div class="value" id="statContainers">0</div>
+                <div class="subtext">Media upload containers</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total API Calls</div>
+                <div class="value" id="statCalls">0</div>
+                <div class="subtext" id="statLatency">Avg Latency: 0 ms</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('scenarios')">⚡ Predefined Scenarios & Controls</button>
+            <button class="tab-btn" onclick="switchTab('generator')">🚀 Bulk Data Generator</button>
+            <button class="tab-btn" onclick="switchTab('accounts')">👥 Accounts & Token Explorer</button>
+            <button class="tab-btn" onclick="switchTab('guide')">📖 Connection Guide</button>
+        </div>
+
+        <!-- Tab 1: Scenarios & Controls -->
+        <div id="tab-scenarios" class="tab-content active">
+            <h2 style="font-size: 1.1rem; margin-bottom: 16px; color: #fff;">1-Click Simulation Scenarios</h2>
+            <div class="scenarios-grid">
+                <div class="scenario-card">
+                    <div>
+                        <h3>🟢 NORMAL</h3>
+                        <p>Standard operating state. Zero artificial latency, unlimited rate limits, valid tokens, realistic profile responses.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="applyScenario('NORMAL')">Activate Scenario</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>📦 LARGE_DATASET</h3>
+                        <p>Generates 10,000 accounts and 50,000 posts to stress-test InstaMngmt's pagination and search performance.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyScenario('LARGE_DATASET')">Generate 10k Accounts</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>🔥 EXTREME_DATASET</h3>
+                        <p>Generates 20,000 accounts and 100,000 posts. Tests extreme scalability and database indexing.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyScenario('EXTREME_DATASET')">Generate 20k Accounts</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>🐢 SLOW_API</h3>
+                        <p>Injects 2,000ms – 5,000ms latency to test skeleton loading, spinners, and HTTP timeouts in InstaMngmt.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="applyScenario('SLOW_API')">Activate Latency</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>🚫 RATE_LIMITED</h3>
+                        <p>Enforces strict 5 requests/min. Returns HTTP 429 with Meta error code 4 and retry headers.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="applyScenario('RATE_LIMITED')">Activate Rate Limit</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>⚠️ TOKEN_FAILURE</h3>
+                        <p>Forces all token validations to fail with OAuthException code 190. Tests token countdown alerts and re-auth.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="applyScenario('TOKEN_FAILURE')">Activate Token Failure</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>💥 SERVER_FAILURE</h3>
+                        <p>Returns HTTP 500 Internal Server Error for all requests to test Resilience4j retry and circuit breaker logic.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="applyScenario('SERVER_FAILURE')">Activate 500 Error</button>
+                </div>
+                <div class="scenario-card">
+                    <div>
+                        <h3>🧹 EMPTY_DATA</h3>
+                        <p>Wipes all simulator database records to test empty state rendering and initial connection onboarding.</p>
+                    </div>
+                    <button class="btn btn-danger" onclick="applyScenario('EMPTY_DATA')">Wipe All Data</button>
+                </div>
+            </div>
+
+            <!-- Granular Simulation Controls -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>🎛️ Granular Simulation Overrides</span>
+                    <button class="btn btn-secondary" onclick="resetSimulationSettings()">Reset to Defaults</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Simulated Latency (Min - Max ms)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="ctrlMinLatency" class="form-control" placeholder="Min ms (e.g. 500)" value="0">
+                            <input type="number" id="ctrlMaxLatency" class="form-control" placeholder="Max ms (e.g. 2000)" value="0">
+                        </div>
+                        <button class="btn btn-secondary" style="margin-top: 8px;" onclick="applyCustomLatency()">Apply Latency</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Rate Limiting (Max Requests / Min)</label>
+                        <input type="number" id="ctrlRateLimit" class="form-control" placeholder="e.g. 60" value="60">
+                        <button class="btn btn-secondary" style="margin-top: 8px;" onclick="applyCustomRateLimit()">Apply Rate Limit</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Force HTTP Error Code</label>
+                        <select id="ctrlErrorCode" class="form-control">
+                            <option value="none">Disabled (Return Normal HTTP 200)</option>
+                            <option value="400">400 Bad Request (Code 100)</option>
+                            <option value="401">401 Unauthorized (Code 190 Expired)</option>
+                            <option value="403">403 Forbidden (Code 200 Insufficient Scope)</option>
+                            <option value="429">429 Rate Limit (Code 4)</option>
+                            <option value="500">500 Internal Server Error</option>
+                            <option value="503">503 Service Unavailable</option>
+                        </select>
+                        <button class="btn btn-secondary" style="margin-top: 8px;" onclick="applyCustomError()">Apply Error Override</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Bulk Generator -->
+        <div id="tab-generator" class="tab-content">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>⚡ Bulk Fake Instagram Account Generator</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 20px;">
+                    Generates thousands of realistic, isolated Instagram Creator & Business accounts with unique IDs, active 60-day tokens, realistic avatars, bios, and follower counts using JDBC batching.
+                </p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Number of Accounts to Generate</label>
+                        <input type="number" id="genCount" class="form-control" value="100">
+                        <div class="quick-presets">
+                            <span class="preset-chip" onclick="setGenCount(10)">+10</span>
+                            <span class="preset-chip" onclick="setGenCount(100)">+100</span>
+                            <span class="preset-chip" onclick="setGenCount(1000)">+1,000</span>
+                            <span class="preset-chip" onclick="setGenCount(5000)">+5,000</span>
+                            <span class="preset-chip" onclick="setGenCount(10000)">+10,000</span>
+                            <span class="preset-chip" onclick="setGenCount(20000)">+20,000</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Posts per Account</label>
+                        <input type="number" id="genPostsPerAccount" class="form-control" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Follower Count Range (Min - Max)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="genMinFollowers" class="form-control" value="150">
+                            <input type="number" id="genMaxFollowers" class="form-control" value="250000">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; align-items: center; gap: 14px;">
+                    <button class="btn btn-primary" id="btnRunBulkGen" onclick="executeBulkGen()">
+                        🚀 Run Bulk Generation
+                    </button>
+                    <span id="bulkGenTimer" style="font-size: 0.82rem; color: var(--accent-green); font-weight: 600;"></span>
+                </div>
+            </div>
+
+            <!-- Bulk Post Generator for Existing Accounts -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>📸 Bulk Post / Media Generator</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 20px;">
+                    Populates accounts with feed photos, short-form reels, and carousel metadata without downloading large disk assets.
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Target Account ID (Leave blank to generate for all accounts)</label>
+                        <input type="text" id="genTargetUserId" class="form-control" placeholder="e.g. 17841400000000001">
+                    </div>
+                    <div class="form-group">
+                        <label>Posts to Add</label>
+                        <input type="number" id="genPostCount" class="form-control" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Media Format</label>
+                        <select id="genMediaType" class="form-control">
+                            <option value="">Mixed (Images, Reels, Carousels)</option>
+                            <option value="IMAGE">Single Image Feed</option>
+                            <option value="REELS">Reels Short Video</option>
+                            <option value="CAROUSEL">Multi-Item Carousel</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="executePostGen()">Add Posts</button>
+            </div>
+        </div>
+
+        <!-- Tab 3: Accounts Explorer -->
+        <div id="tab-accounts" class="tab-content">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>👥 Connected Accounts Directory</span>
+                    <div style="display: flex; gap: 10px; width: 340px;">
+                        <input type="text" id="accountSearchInput" class="form-control" placeholder="Search by username, name or ID..." onkeyup="handleSearch(event)">
+                        <button class="btn btn-secondary" onclick="loadAccounts(0)">Search</button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Instagram ID</th>
+                                <th>Followers</th>
+                                <th>Posts</th>
+                                <th>Token Status</th>
+                                <th>Access Token</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountsTableBody">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading accounts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-bar">
+                    <div id="paginationInfo">Showing 0 of 0 accounts</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" id="btnPrevPage" onclick="changePage(-1)">Previous</button>
+                        <button class="btn btn-secondary" id="btnNextPage" onclick="changePage(1)">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Connection Guide -->
+        <div id="tab-guide" class="tab-content">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>🔗 How to Connect InstaMngmt to the Simulator</span>
+                </div>
+                <div style="font-size: 0.88rem; line-height: 1.6; color: var(--text-secondary);">
+                    <p style="margin-bottom: 14px;">
+                        The Fake Instagram API Simulator runs on <strong style="color: white;">http://localhost:8085</strong>. To switch InstaMngmt from Real Instagram to this Fake Simulator, set the following configuration in <code style="color: var(--accent-pink); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">application.yml</code> or environment variables:
+                    </p>
+                    <pre style="background: rgba(10,12,16,0.9); padding: 16px; border-radius: 8px; border: 1px solid var(--border); color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; margin-bottom: 18px;">
+instagram:
+  provider: fake
+  simulator-base-url: http://localhost:8085
+  graph-api-base-url: http://localhost:8085</pre>
+                    <p style="margin-bottom: 10px;">
+                        <strong style="color: white;">Connecting an Account in the InstaMngmt UI:</strong>
+                    </p>
+                    <ol style="margin-left: 20px; margin-bottom: 16px;">
+                        <li>Go to the <strong style="color: white;">Accounts Explorer</strong> tab in this simulator dashboard.</li>
+                        <li>Click <strong style="color: white;">"Copy Token"</strong> on any generated account.</li>
+                        <li>In your InstaMngmt web UI, open <strong style="color: white;">Connect Account Modal</strong>.</li>
+                        <li>Paste the copied Access Token and Instagram User ID.</li>
+                        <li>Click <strong style="color: white;">Verify & Connect</strong>. The account is instantly linked with live verified followers and bio!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let currentPage = 0;
+        const pageSize = 15;
+        let totalPages = 1;
+
+        async function init() {
+            await fetchStats();
+            await loadAccounts(0);
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/admin/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('statAccounts').innerText = Number(data.totalAccounts).toLocaleString();
+                    document.getElementById('statPosts').innerText = Number(data.totalPublishedMedia).toLocaleString();
+                    document.getElementById('statTokens').innerText = Number(data.totalTokens).toLocaleString();
+                    document.getElementById('statContainers').innerText = Number(data.totalContainers).toLocaleString();
+                    document.getElementById('statCalls').innerText = Number(data.totalApiRequests).toLocaleString();
+                    document.getElementById('statLatency').innerText = `Avg Latency: ${Math.round(data.averageLatencyMs)} ms`;
+                    document.getElementById('currentScenarioPill').innerText = `Scenario: ${data.activeScenario || 'NORMAL'}`;
+                }
+            } catch (e) {
+                console.error('Failed to load stats', e);
+            }
+        }
+
+        async function loadAccounts(page) {
+            currentPage = page;
+            const query = document.getElementById('accountSearchInput').value.trim();
+            const url = `/admin/accounts?page=${page}&size=${pageSize}${query ? '&query=' + encodeURIComponent(query) : ''}`;
+
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    totalPages = data.totalPages || 1;
+                    renderAccountsTable(data.content);
+                    document.getElementById('paginationInfo').innerText = 
+                        `Showing page ${data.page + 1} of ${totalPages} (${data.totalElements.toLocaleString()} accounts)`;
+                    document.getElementById('btnPrevPage').disabled = data.page <= 0;
+                    document.getElementById('btnNextPage').disabled = data.page >= totalPages - 1;
+                }
+            } catch (e) {
+                console.error('Failed to load accounts', e);
+            }
+        }
+
+        function renderAccountsTable(accounts) {
+            const tbody = document.getElementById('accountsTableBody');
+            if (!accounts || accounts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No accounts found. Use the Bulk Generator tab to create accounts.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = accounts.map(a => {
+                const badgeClass = a.tokenStatus === 'VALID' ? 'badge-valid' : (a.tokenStatus === 'EXPIRED' ? 'badge-expired' : 'badge-revoked');
+                return `
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <img src="${a.profilePictureUrl || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + a.username}" class="avatar" alt="">
+                                <div>
+                                    <div class="username">@${a.username}</div>
+                                    <div class="fullname">${a.name || ''}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><code style="color: #93c5fd;">${a.igUserId}</code></td>
+                        <td><strong>${Number(a.followersCount).toLocaleString()}</strong></td>
+                        <td>${Number(a.mediaCount).toLocaleString()}</td>
+                        <td><span class="${badgeClass}">${a.tokenStatus}</span></td>
+                        <td>
+                            <div class="token-cell" title="${a.activeToken || 'None'}">
+                                ${a.activeToken || 'None'}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="action-icon-btn" onclick="copyToClipboard('${a.activeToken}')" title="Copy Token">📋 Token</button>
+                                <button class="action-icon-btn" onclick="copyToClipboard('${a.igUserId}')" title="Copy User ID">🆔 ID</button>
+                                ${a.tokenStatus === 'VALID' 
+                                    ? `<button class="action-icon-btn" style="color: #fca5a5;" onclick="expireToken('${a.activeToken}')">Expire</button>`
+                                    : `<button class="action-icon-btn" style="color: #86efac;" onclick="restoreToken('${a.activeToken}')">Restore</button>`
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tab));
+            if (activeBtn) activeBtn.classList.add('active');
+            const target = document.getElementById('tab-' + tab);
+            if (target) target.classList.add('active');
+
+            if (tab === 'accounts') loadAccounts(currentPage);
+        }
+
+        async function applyScenario(scenario) {
+            showToast(`Applying scenario: ${scenario}...`);
+            try {
+                const res = await fetch(`/admin/scenarios/${scenario}`, { method: 'POST' });
+                if (res.ok) {
+                    showToast(`Scenario ${scenario} activated successfully!`);
+                    await fetchStats();
+                    if (scenario.includes('DATASET') || scenario === 'EMPTY_DATA') {
+                        loadAccounts(0);
+                    }
+                }
+            } catch (e) {
+                showToast(`Failed to activate scenario: ${e.message}`);
+            }
+        }
+
+        async function executeBulkGen() {
+            const count = parseInt(document.getElementById('genCount').value) || 100;
+            const postsPerAccount = parseInt(document.getElementById('genPostsPerAccount').value) || 0;
+            const minFollowers = parseInt(document.getElementById('genMinFollowers').value) || 100;
+            const maxFollowers = parseInt(document.getElementById('genMaxFollowers').value) || 250000;
+
+            const btn = document.getElementById('btnRunBulkGen');
+            btn.disabled = true;
+            btn.innerText = '⏳ Generating accounts in bulk...';
+            document.getElementById('bulkGenTimer').innerText = '';
+
+            const startTime = performance.now();
+            try {
+                const res = await fetch('/admin/test-data/accounts/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        count,
+                        generatePosts: postsPerAccount > 0,
+                        postsPerAccount,
+                        generateFollowers: true,
+                        minFollowers,
+                        maxFollowers,
+                        randomizeNames: true
+                    })
+                });
+
+                const data = await res.json();
+                const elapsed = Math.round(performance.now() - startTime);
+                document.getElementById('bulkGenTimer').innerText = `✓ Generated ${count.toLocaleString()} accounts in ${elapsed} ms!`;
+                showToast(`Generated ${count.toLocaleString()} accounts successfully!`);
+                await fetchStats();
+                loadAccounts(0);
+            } catch (e) {
+                showToast(`Bulk generation failed: ${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🚀 Run Bulk Generation';
+            }
+        }
+
+        async function executePostGen() {
+            const igUserId = document.getElementById('genTargetUserId').value.trim();
+            const count = parseInt(document.getElementById('genPostCount').value) || 5;
+            const postType = document.getElementById('genMediaType').value;
+
+            try {
+                const res = await fetch('/admin/test-data/posts/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ igUserId: igUserId || null, count, postType })
+                });
+                if (res.ok) {
+                    showToast(`Added ${count} posts!`);
+                    await fetchStats();
+                }
+            } catch (e) {
+                showToast(`Post generation failed: ${e.message}`);
+            }
+        }
+
+        async function expireToken(token) {
+            if (!token) return;
+            try {
+                await fetch(`/admin/tokens/${token}/expire`, { method: 'POST' });
+                showToast('Token expired! Live calls will now return HTTP 401.');
+                loadAccounts(currentPage);
+            } catch (e) {
+                showToast('Failed to expire token');
+            }
+        }
+
+        async function restoreToken(token) {
+            if (!token) return;
+            try {
+                await fetch(`/admin/tokens/${token}/restore`, { method: 'POST' });
+                showToast('Token restored to VALID.');
+                loadAccounts(currentPage);
+            } catch (e) {
+                showToast('Failed to restore token');
+            }
+        }
+
+        async function applyCustomLatency() {
+            const minMs = parseInt(document.getElementById('ctrlMinLatency').value) || 0;
+            const maxMs = parseInt(document.getElementById('ctrlMaxLatency').value) || minMs;
+            await fetch('/admin/simulation/latency', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: maxMs > 0, minMs, maxMs })
+            });
+            showToast(`Latency set to ${minMs}-${maxMs} ms`);
+        }
+
+        async function applyCustomRateLimit() {
+            const max = parseInt(document.getElementById('ctrlRateLimit').value) || 60;
+            await fetch('/admin/simulation/rate-limit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: true, maxRequestsPerMinute: max })
+            });
+            showToast(`Rate limit set to ${max} req/min`);
+        }
+
+        async function applyCustomError() {
+            const val = document.getElementById('ctrlErrorCode').value;
+            if (val === 'none') {
+                await fetch('/admin/simulation/force-error', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: false })
+                });
+                showToast('Error override disabled.');
+            } else {
+                const code = parseInt(val);
+                await fetch('/admin/simulation/force-error', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: true, statusCode: code, errorCode: 2, errorMessage: 'Forced simulated error ' + code })
+                });
+                showToast(`Forced error HTTP ${code} enabled.`);
+            }
+        }
+
+        async function resetSimulationSettings() {
+            await fetch('/admin/simulation/reset', { method: 'POST' });
+            document.getElementById('ctrlMinLatency').value = 0;
+            document.getElementById('ctrlMaxLatency').value = 0;
+            document.getElementById('ctrlRateLimit').value = 60;
+            document.getElementById('ctrlErrorCode').value = 'none';
+            showToast('Simulation settings reset to normal.');
+            fetchStats();
+        }
+
+        async function confirmResetAll() {
+            if (confirm('Are you sure you want to reset all simulator accounts, posts, containers and tokens?')) {
+                await fetch('/admin/test-data/reset', { method: 'DELETE' });
+                showToast('All simulator data reset.');
+                await fetchStats();
+                loadAccounts(0);
+            }
+        }
+
+        function setGenCount(val) {
+            document.getElementById('genCount').value = val;
+        }
+
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                loadAccounts(0);
+            }
+        }
+
+        function changePage(delta) {
+            const target = currentPage + delta;
+            if (target >= 0 && target < totalPages) {
+                loadAccounts(target);
+            }
+        }
+
+        function copyToClipboard(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text);
+            showToast(`Copied: ${text.substring(0, 24)}...`);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

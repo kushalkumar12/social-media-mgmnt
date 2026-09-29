@@ -26,6 +26,7 @@ public class PostService {
     private final PublishingAttemptRepository publishingAttemptRepository;
     private final MediaService mediaService;
     private final InstagramPublishingWorker publishingWorker;
+    private final AccountGroupRepository accountGroupRepository;
 
     public PostService(
             ScheduledPostRepository scheduledPostRepository,
@@ -34,7 +35,8 @@ public class PostService {
             OutboxJobRepository outboxJobRepository,
             PublishingAttemptRepository publishingAttemptRepository,
             MediaService mediaService,
-            InstagramPublishingWorker publishingWorker) {
+            InstagramPublishingWorker publishingWorker,
+            AccountGroupRepository accountGroupRepository) {
         this.scheduledPostRepository = scheduledPostRepository;
         this.instagramAccountRepository = instagramAccountRepository;
         this.mediaRepository = mediaRepository;
@@ -42,57 +44,93 @@ public class PostService {
         this.publishingAttemptRepository = publishingAttemptRepository;
         this.mediaService = mediaService;
         this.publishingWorker = publishingWorker;
+        this.accountGroupRepository = accountGroupRepository;
     }
 
     @Transactional
     public PostDTOs.ScheduledPostDTO createPost(User user, PostDTOs.CreatePostRequest request) {
-        InstagramAccount account = instagramAccountRepository.findByIdAndUserId(request.getInstagramAccountId(), user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("InstagramAccount", "id", request.getInstagramAccountId()));
+        List<InstagramAccount> targetAccounts = new ArrayList<>();
 
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new APIException(HttpStatus.BAD_REQUEST, "ACCOUNT_INACTIVE", "Selected Instagram account is inactive or token expired");
+        if (request.getAccountGroupId() != null) {
+            AccountGroup group = accountGroupRepository.findById(request.getAccountGroupId())
+                    .orElseThrow(() -> new ResourceNotFoundException("AccountGroup", "id", request.getAccountGroupId()));
+            if (!group.getUserId().equals(user.getId())) {
+                throw new APIException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Account group does not belong to you");
+            }
+            if (group.getAccountIds() != null && !group.getAccountIds().isEmpty()) {
+                targetAccounts = instagramAccountRepository.findAllById(group.getAccountIds()).stream()
+                        .filter(acc -> acc.getUser().getId().equals(user.getId()) && acc.getStatus() == AccountStatus.ACTIVE)
+                        .toList();
+            }
+            if (targetAccounts.isEmpty()) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "EMPTY_GROUP", "The selected account group does not contain any active connected accounts");
+            }
+        } else if (request.getInstagramAccountIds() != null && !request.getInstagramAccountIds().isEmpty()) {
+            targetAccounts = instagramAccountRepository.findAllById(request.getInstagramAccountIds()).stream()
+                    .filter(acc -> acc.getUser().getId().equals(user.getId()) && acc.getStatus() == AccountStatus.ACTIVE)
+                    .toList();
+            if (targetAccounts.isEmpty()) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "ACCOUNT_INACTIVE", "None of the selected accounts are active");
+            }
+        } else if (request.getInstagramAccountId() != null) {
+            InstagramAccount account = instagramAccountRepository.findByIdAndUserId(request.getInstagramAccountId(), user.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("InstagramAccount", "id", request.getInstagramAccountId()));
+            if (account.getStatus() != AccountStatus.ACTIVE) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "ACCOUNT_INACTIVE", "Selected Instagram account is inactive or token expired");
+            }
+            targetAccounts.add(account);
+        } else {
+            throw new APIException(HttpStatus.BAD_REQUEST, "ACCOUNT_REQUIRED", "Please select an Instagram account or account group to publish to");
         }
 
-        String idempotencyKey = UUID.randomUUID().toString();
         LocalDateTime scheduledAt = request.getScheduledAt() != null ? request.getScheduledAt() : LocalDateTime.now().plusMinutes(5);
+        ScheduledPost primaryPost = null;
 
-        ScheduledPost post = ScheduledPost.builder()
-                .user(user)
-                .instagramAccount(account)
-                .caption(request.getCaption())
-                .postType(request.getPostType() != null ? request.getPostType() : PostType.SINGLE_IMAGE)
-                .idempotencyKey(idempotencyKey)
-                .scheduledAt(scheduledAt)
-                .timezone(request.getTimezone() != null ? request.getTimezone() : "UTC")
-                .status(PostStatus.SCHEDULED)
-                .retryCount(0)
-                .maxAttempts(3)
-                .build();
+        for (InstagramAccount account : targetAccounts) {
+            String idempotencyKey = UUID.randomUUID().toString();
 
-        int pos = 0;
-        for (Long mediaId : request.getMediaIds()) {
-            Media media = mediaRepository.findByIdAndUserId(mediaId, user.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Media", "id", mediaId));
-            PostMediaItem item = PostMediaItem.builder()
-                    .scheduledPost(post)
-                    .media(media)
-                    .position(pos++)
+            ScheduledPost post = ScheduledPost.builder()
+                    .user(user)
+                    .instagramAccount(account)
+                    .caption(request.getCaption())
+                    .postType(request.getPostType() != null ? request.getPostType() : PostType.SINGLE_IMAGE)
+                    .idempotencyKey(idempotencyKey)
+                    .scheduledAt(scheduledAt)
+                    .timezone(request.getTimezone() != null ? request.getTimezone() : "UTC")
+                    .status(PostStatus.SCHEDULED)
+                    .retryCount(0)
+                    .maxAttempts(3)
                     .build();
-            post.getMediaItems().add(item);
+
+            int pos = 0;
+            for (Long mediaId : request.getMediaIds()) {
+                Media media = mediaRepository.findByIdAndUserId(mediaId, user.getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Media", "id", mediaId));
+                PostMediaItem item = PostMediaItem.builder()
+                        .scheduledPost(post)
+                        .media(media)
+                        .position(pos++)
+                        .build();
+                post.getMediaItems().add(item);
+            }
+
+            post = scheduledPostRepository.save(post);
+
+            // Transactional Outbox Job insertion
+            OutboxJob outboxJob = OutboxJob.builder()
+                    .scheduledPostId(post.getId())
+                    .postType(post.getPostType())
+                    .scheduledAt(post.getScheduledAt())
+                    .status(OutboxJobStatus.PENDING)
+                    .build();
+            outboxJobRepository.save(outboxJob);
+
+            if (primaryPost == null) {
+                primaryPost = post;
+            }
         }
 
-        post = scheduledPostRepository.save(post);
-
-        // Transactional Outbox Job insertion
-        OutboxJob outboxJob = OutboxJob.builder()
-                .scheduledPostId(post.getId())
-                .postType(post.getPostType())
-                .scheduledAt(post.getScheduledAt())
-                .status(OutboxJobStatus.PENDING)
-                .build();
-        outboxJobRepository.save(outboxJob);
-
-        return mapToDTO(post);
+        return mapToDTO(primaryPost);
     }
 
     public List<PostDTOs.ScheduledPostDTO> getUserPosts(User user) {

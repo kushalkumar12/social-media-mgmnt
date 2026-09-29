@@ -21,6 +21,8 @@ backend/target/
 # Backend database and runtime files
 backend/data/*
 !backend/data/.gitkeep
+fake-instagram-service/data/*
+!fake-instagram-service/data/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
 *.db

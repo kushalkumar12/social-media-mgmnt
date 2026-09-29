@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/instamngmttestdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    root: INFO
+    com.instamngmt: DEBUG
+    org.springframework.security: INFO
+
+instagram:
+  provider: ${INSTAGRAM_PROVIDER:fake}
+  graph-api-base-url: ${INSTAGRAM_GRAPH_API_BASE_URL:https://graph.facebook.com}
+  simulator-base-url: ${INSTAGRAM_SIMULATOR_BASE_URL:http://localhost:8085}

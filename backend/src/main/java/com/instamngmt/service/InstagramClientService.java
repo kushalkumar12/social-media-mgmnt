@@ -25,6 +25,15 @@ public class InstagramClientService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     
+    @Value("${instagram.provider:real}")
+    private String provider;
+
+    @Value("${instagram.graph-api-base-url:https://graph.facebook.com}")
+    private String graphApiBaseUrl;
+
+    @Value("${instagram.simulator-base-url:http://localhost:8085}")
+    private String simulatorBaseUrl;
+
     @Value("${instagram.api-version:v23.0}")
     private String apiVersion;
 
@@ -40,15 +49,21 @@ public class InstagramClientService {
     }
 
     private String resolveBaseHost(String accessToken) {
+        if ("fake".equalsIgnoreCase(provider)) {
+            return simulatorBaseUrl;
+        }
         if (accessToken != null && accessToken.trim().startsWith("IG")) {
             return "https://graph.instagram.com";
         }
-        return "https://graph.facebook.com";
+        return graphApiBaseUrl != null && !graphApiBaseUrl.isBlank() ? graphApiBaseUrl : "https://graph.facebook.com";
     }
 
     private String getAlternateHost(String host) {
+        if ("fake".equalsIgnoreCase(provider)) {
+            return simulatorBaseUrl;
+        }
         if ("https://graph.instagram.com".equalsIgnoreCase(host)) {
-            return "https://graph.facebook.com";
+            return graphApiBaseUrl != null && !graphApiBaseUrl.isBlank() ? graphApiBaseUrl : "https://graph.facebook.com";
         }
         return "https://graph.instagram.com";
     }
@@ -102,8 +117,10 @@ public class InstagramClientService {
         log.info("Creating real Meta media container for igUserId: {}, type: {}, isCarouselItem: {}", igUserId, postType, isCarouselItem);
 
         if (mediaCdnUrl != null && (mediaCdnUrl.contains("localhost") || mediaCdnUrl.contains("127.0.0.1"))) {
-            throw new APIException(HttpStatus.BAD_REQUEST, "LOCAL_MEDIA_URL_UNSUPPORTED",
-                    "Meta Graph API cannot fetch media from localhost (" + mediaCdnUrl + "). Media must be hosted on a public internet URL (e.g. ImgBB, S3, Cloudinary).");
+            if (!"fake".equalsIgnoreCase(provider)) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "LOCAL_MEDIA_URL_UNSUPPORTED",
+                        "Meta Graph API cannot fetch media from localhost (" + mediaCdnUrl + "). Media must be hosted on a public internet URL (e.g. ImgBB, S3, Cloudinary).");
+            }
         }
 
         String cleanToken = accessToken != null ? accessToken.trim() : "";
@@ -307,7 +324,7 @@ public class InstagramClientService {
     }
 
     public String refreshLongLivedToken(String currentToken) {
-        if (!hasValidAppSecret() || appId == null || appId.isBlank() || appId.contains("dummy")) {
+        if (!"fake".equalsIgnoreCase(provider) && (!hasValidAppSecret() || appId == null || appId.isBlank() || appId.contains("dummy"))) {
             log.info("App ID or App Secret not configured for Meta long-lived token exchange; retaining current token.");
             return currentToken;
         }
