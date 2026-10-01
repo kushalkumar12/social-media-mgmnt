@@ -21,6 +21,7 @@ Key architectural highlights of the platform:
 ```mermaid
 graph TD
     Client["Vite + React 18 SPA (TypeScript)"] -->|REST / Bearer JWT| Gateway["Spring Boot 3 API Gateway"]
+    Client -->|Server-Sent Events SSE| NotifyStream["SSE Notification Stream (/api/notifications/stream)"]
     
     subgraph Backend Core Services
         Gateway --> AuthSvc["Auth & User Service (/api/auth)"]
@@ -29,19 +30,25 @@ graph TD
         Gateway --> PostSvc["Post Management Service (/api/posts)"]
         Gateway --> MediaSvc["Media Asset Service (/api/media)"]
         Gateway --> ExcelSvc["Bulk Excel Engine (/api/posts/excel)"]
+        Gateway --> NotifySvc["Real-Time Notification Service (/api/notifications)"]
         Gateway --> DashSvc["Dashboard & Analytics Service (/api/dashboard)"]
         Gateway --> SettingSvc["Site Settings Service (/api/settings)"]
         Gateway --> WebhookSvc["Meta Webhook Controller (/api/webhooks)"]
         
+        ExcelSvc --> AsyncWorker["AsyncBulkImportProcessor (Executors Thread Pool)"]
+        AsyncWorker -->|Spring ApplicationEvent| EventBus["NotificationEventListener"]
+        EventBus --> NotifySvc
+        NotifySvc --> NotifyStream
+        
         PostSvc --> OutboxQueue[("Transactional Outbox Queue")]
         OutboxQueue --> PubWorker["Instagram Publishing Worker (ShedLock)"]
         PubWorker --> RateLimiter["Rate Limit Ledger & Resilience4j"]
-        RateLimiter --> GraphAPI["Meta Graph API v19.0"]
+        RateLimiter --> GraphAPI["Meta Graph API v19.0 - v23.0"]
         InstaAuthSvc --> GraphAPI
     end
 
     subgraph Data & Storage Layers
-        AuthSvc & GroupSvc & InstaAuthSvc & PostSvc & OutboxQueue --> DB[("PostgreSQL / H2 Database")]
+        AuthSvc & GroupSvc & InstaAuthSvc & PostSvc & OutboxQueue & NotifySvc --> DB[("PostgreSQL / H2 Database")]
         MediaSvc --> Storage["Local Storage / Cloud Bucket Abstraction"]
     end
 ```
@@ -193,6 +200,24 @@ graph TD
 * **GDPR Data Deletion Callback (`POST /api/webhooks/data-deletion`)**:
   * Generates tracking URL and unique confirmation code compliant with Meta's data deletion requirements.
 
+### 3.13 Real-Time Notification Center & Asynchronous Event Processing
+* **Server-Sent Events (SSE) Stream (`GET /api/notifications/stream`)**:
+  * Reactive persistent HTTP stream delivering live notifications to connected browser sessions in real time without client polling.
+  * Resilient reconnection handling with automatic reconnect and keep-alive heartbeats.
+* **Notification Center & Toast System**:
+  * Bell icon in top navigation bar featuring dynamic unread count pill badge and animated state transitions.
+  * Interactive Notification Center dropdown supporting:
+    * Categorized severity tabs: `INFO`, `SUCCESS`, `WARNING`, `ERROR`.
+    * Unread-only filtering toggle.
+    * In-place "Mark as Read", "Mark All as Read", and "Clear All Read Notifications".
+    * Direct deep links navigating directly to related posts, accounts, or audit logs.
+  * Floating toast alert component (`NotificationToast`) rendering real-time popups with auto-dismiss and manual dismissal.
+* **Asynchronous Bulk Excel Ingestion Engine (`AsyncBulkImportProcessor`)**:
+  * High-volume batch imports (> 199 rows) are immediately handed off to an asynchronous worker thread pool (`@Async` and `Executors.newFixedThreadPool(10)`).
+  * Returns an immediate HTTP 200 response with `isAsync: true` to prevent gateway timeouts.
+  * Worker persists rows in transactions, publishes Spring `NotificationEvent` upon progress and completion.
+  * Dispatches real-time SSE notifications with severity `SUCCESS` or `ERROR` detailing total scheduled posts and row counts.
+
 ---
 
 ## 4. Non-Functional Requirements & Design Aesthetics
@@ -218,6 +243,7 @@ erDiagram
     USER ||--o{ MEDIA : uploads
     USER ||--o{ SCHEDULED_POST : schedules
     USER ||--o{ BULK_IMPORT_BATCH : imports
+    USER ||--o{ NOTIFICATION : receives
     
     ACCOUNT_GROUP ||--o{ ACCOUNT_GROUP_MEMBERS : contains
     INSTAGRAM_ACCOUNT ||--o{ ACCOUNT_GROUP_MEMBERS : grouped_in
@@ -329,6 +355,18 @@ erDiagram
         string description
         datetime updated_at
     }
+
+    NOTIFICATION {
+        bigint id PK
+        bigint user_id FK
+        string title
+        text message
+        string type
+        string severity
+        boolean is_read
+        string link_url
+        datetime created_at
+    }
 ```
 
 ---
@@ -403,7 +441,18 @@ erDiagram
 | `PUT` | `/api/settings/admin/{key}` | Update specific system setting value | Admin |
 | `POST` | `/api/settings/admin/toggle-otp` | Quick toggle for registration OTP requirement | Admin |
 
-### 6.8 Meta Webhooks API (`/api/webhooks`)
+### 6.8 Real-Time Notification API (`/api/notifications`)
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/notifications` | Paginated notification list with optional `unreadOnly=true` filter | User |
+| `GET` | `/api/notifications/unread-count` | Real-time count of active unread notifications | User |
+| `PUT` | `/api/notifications/{id}/read` | Mark individual notification as read | User |
+| `PUT` | `/api/notifications/mark-all-read` | Mark all unread notifications for current user as read | User |
+| `DELETE`| `/api/notifications/{id}` | Delete a specific notification record | User |
+| `DELETE`| `/api/notifications/clear-all` | Purge all read notifications for current user | User |
+| `GET` | `/api/notifications/stream` | Server-Sent Events (SSE) persistent stream (`text/event-stream`) | User |
+
+### 6.9 Meta Webhooks API (`/api/webhooks`)
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/webhooks/instagram` | Meta Webhook challenge verification handshake | Public |

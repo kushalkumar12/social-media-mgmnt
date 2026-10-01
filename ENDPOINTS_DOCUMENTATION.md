@@ -716,24 +716,32 @@ All endpoints are hosted on the Spring Boot 3 backend under `/api/...`. Authenti
   ```
 
 #### `POST /api/posts/commit-excel-batch`
-* **Purpose**: Commits validated preview rows to the database using multithreaded batch processing.
+* **Purpose**: Commits validated preview rows to the database using high-throughput multithreaded processing. For large batches (> 199 rows), execution automatically offloads to the background `AsyncBulkImportProcessor` to prevent gateway timeouts.
 * **Access**: Authenticated User
 * **Request Body**:
   ```json
   {
-    "batchId": "BATCH-9a1b2c3d",
+    "batchId": 142,
     "rows": [ /* list of validated row objects */ ]
   }
   ```
-* **Response (HTTP 200)**:
+* **Response (HTTP 200 - Synchronous Mode, <= 199 rows)**:
   ```json
   {
-    "batchId": "BATCH-9a1b2c3d",
-    "totalCommitted": 23,
-    "status": "COMPLETED",
-    "message": "Successfully scheduled 23 posts via multithreaded worker."
+    "batchId": 142,
+    "committedCount": 23,
+    "message": "Successfully scheduled 23 posts across 1 accounts."
   }
   ```
+* **Response (HTTP 200 - Asynchronous Mode, > 199 rows)**:
+  ```json
+  {
+    "batchId": 142,
+    "committedCount": 0,
+    "message": "Batch processing started in background. You will receive a real-time notification upon completion."
+  }
+  ```
+  *Note: When processed asynchronously, completion status and detailed statistics are streamed directly to the frontend via the Server-Sent Events (SSE) notification stream.*
 
 ---
 
@@ -883,6 +891,80 @@ All endpoints are hosted on the Spring Boot 3 backend under `/api/...`. Authenti
 
 ---
 
+### 4.9 Real-Time Notification Controller (`/api/notifications`)
+
+#### `GET /api/notifications`
+* **Purpose**: Retrieves a paginated list of system and activity notifications for the authenticated user.
+* **Access**: Authenticated User
+* **Query Parameters**:
+  * `unreadOnly`: Boolean (`true` | `false`, default: `false`)
+  * `page`: Integer (0-indexed, default: `0`)
+  * `size`: Integer (page size, default: `15`)
+* **Response (HTTP 200)**:
+  ```json
+  {
+    "content": [
+      {
+        "id": 1,
+        "title": "Bulk Import Complete",
+        "message": "Successfully scheduled 250 posts from campaign_q4.xlsx.",
+        "type": "BULK_IMPORT",
+        "severity": "SUCCESS",
+        "isRead": false,
+        "linkUrl": "/posts",
+        "createdAt": "2026-10-01T17:10:00"
+      }
+    ],
+    "page": 0,
+    "size": 15,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  }
+  ```
+
+#### `GET /api/notifications/unread-count`
+* **Purpose**: High-frequency endpoint for updating the notification bell badge counter.
+* **Access**: Authenticated User
+* **Response (HTTP 200)**:
+  ```json
+  {
+    "unreadCount": 3
+  }
+  ```
+
+#### `PUT /api/notifications/{id}/read`
+* **Purpose**: Marks an individual notification as read.
+* **Access**: Authenticated User
+* **Response (HTTP 200)**: Updated `NotificationDTO`.
+
+#### `PUT /api/notifications/mark-all-read`
+* **Purpose**: Marks all unread notifications belonging to the current user as read in a single transactional query.
+* **Access**: Authenticated User
+* **Response (HTTP 200)**: Empty Body.
+
+#### `DELETE /api/notifications/{id}`
+* **Purpose**: Deletes a specific notification record.
+* **Access**: Authenticated User
+* **Response (HTTP 204)**: No Content.
+
+#### `DELETE /api/notifications/clear-all`
+* **Purpose**: Purges all notifications already marked as read for the current user.
+* **Access**: Authenticated User
+* **Response (HTTP 204)**: No Content.
+
+#### `GET /api/notifications/stream`
+* **Purpose**: Establishes a persistent Server-Sent Events (SSE) stream (`text/event-stream`) delivering real-time notification events directly to connected browser clients.
+* **Access**: Authenticated User
+* **Headers**: `Accept: text/event-stream`, `Authorization: Bearer <jwt-token>`
+* **SSE Event Frame Example**:
+  ```
+  event: notification
+  data: {"id":42,"title":"Post Published","message":"Reel successfully published to @techcorp_official!","type":"POST_PUBLISHED","severity":"SUCCESS","isRead":false,"linkUrl":"/posts","createdAt":"2026-10-01T17:15:00"}
+  ```
+
+---
+
 ## 5. End-to-End Sequence Walkthroughs
 
 ### 5.1 Single Image Post Publishing Sequence
@@ -982,6 +1064,13 @@ sequenceDiagram
 | **App Dashboard** | `GET /api/dashboard` | Spring Boot | Bearer JWT | Aggregated Telemetry DTO |
 | **App Settings** | `GET /api/settings/public` | Spring Boot | None (Public) | Public Site Flags |
 | **App Settings** | `POST /api/settings/admin/toggle-otp` | Spring Boot | Bearer JWT (Admin) | Updated Setting Record |
+| **App Notifications** | `GET /api/notifications` | Spring Boot | Bearer JWT | Paginated Notification Array |
+| **App Notifications** | `GET /api/notifications/unread-count` | Spring Boot | Bearer JWT | Real-time Unread Badge Count |
+| **App Notifications** | `PUT /api/notifications/{id}/read` | Spring Boot | Bearer JWT | Updated Notification DTO |
+| **App Notifications** | `PUT /api/notifications/mark-all-read` | Spring Boot | Bearer JWT | Batch Read Confirmation |
+| **App Notifications** | `DELETE /api/notifications/{id}` | Spring Boot | Bearer JWT | Deletion Confirmation |
+| **App Notifications** | `DELETE /api/notifications/clear-all` | Spring Boot | Bearer JWT | Clear All Confirmation |
+| **App Notifications** | `GET /api/notifications/stream` | Spring Boot | Bearer JWT | SSE Real-Time Event Stream |
 | **Compliance** | `GET /api/webhooks/instagram` | Spring Boot | Webhook Token | Challenge Echo String |
 | **Compliance** | `POST /api/webhooks/deauthorize` | Spring Boot | Meta Signature | Deauthorization Status |
 | **Compliance** | `POST /api/webhooks/data-deletion` | Spring Boot | Meta Signature | GDPR Deletion Response |
