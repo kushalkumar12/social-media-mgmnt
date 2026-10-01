@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.instamngmt.event.NotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,10 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -38,6 +44,8 @@ public class ExcelImportService {
     private final MediaRepository mediaRepository;
     private final InstagramAccountRepository instagramAccountRepository;
     private final AccountGroupRepository accountGroupRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final AsyncBulkImportProcessor asyncBulkImportProcessor;
 
     private static final List<DateTimeFormatter> DATE_ONLY_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd"),
@@ -196,6 +204,219 @@ public class ExcelImportService {
     }
 
     /**
+     * Bulk Scheduled Post Excel upload & execution engine:
+     * 1. Validates all Excel rows; if any error, formats the best message (e.g. 'Row 34 has past date') and throws error.
+     * 2. Saves the Excel file as-it-is (DB BLOB and disk file).
+     * 3. If records > 199: Tells user file is under process, processes in background, pushes bottom-right notification via SSE & persists.
+     * 4. If records < 200: Processes file immediately, shows notification on screen.
+     */
+    @Transactional
+    public ExcelDTOs.BulkProcessResponse uploadAndProcessExcel(
+            User user,
+            MultipartFile file,
+            Long targetAccountId,
+            Long targetGroupId) {
+        if (file == null || file.isEmpty()) {
+            throw new APIException(HttpStatus.BAD_REQUEST, "EMPTY_FILE", "Uploaded Excel spreadsheet is empty.");
+        }
+
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new APIException(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_READ_ERROR", "Could not read uploaded file bytes");
+        }
+
+        // Parse and validate rows
+        List<ExcelDTOs.ExcelRowPreview> rows = parseExcelRows(fileBytes);
+        if (rows.isEmpty()) {
+            throw new APIException(HttpStatus.BAD_REQUEST, "NO_DATA_ROWS", "The uploaded Excel sheet contains no valid data rows.");
+        }
+
+        // 1. Validate the excel: if any error show the best message like 'Row 34 has past date'
+        List<String> allErrors = new ArrayList<>();
+        for (ExcelDTOs.ExcelRowPreview row : rows) {
+            if (!row.isValid() && row.getValidationErrors() != null) {
+                allErrors.addAll(row.getValidationErrors());
+            }
+        }
+
+        if (!allErrors.isEmpty()) {
+            String bestErrorMessage;
+            if (allErrors.size() == 1) {
+                bestErrorMessage = allErrors.get(0);
+            } else if (allErrors.size() <= 3) {
+                bestErrorMessage = String.join(" | ", allErrors);
+            } else {
+                bestErrorMessage = allErrors.get(0) + " | " + allErrors.get(1) + " (and " + (allErrors.size() - 2) + " more spreadsheet errors).";
+            }
+            log.warn("Bulk import validation failed for user {}: {}", user.getId(), bestErrorMessage);
+            throw new APIException(HttpStatus.BAD_REQUEST, "EXCEL_VALIDATION_ERROR", bestErrorMessage);
+        }
+
+        // 2. Save the excel as it is file (DB entity & physical file on disk)
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "bulk_posts.xlsx";
+        BulkImportBatch batch = BulkImportBatch.builder()
+                .userId(user.getId())
+                .fileName(originalFilename)
+                .fileData(fileBytes)
+                .totalRows(rows.size())
+                .validRows(rows.size())
+                .errorRows(0)
+                .status("PROCESSING")
+                .build();
+        batch = bulkImportBatchRepository.save(batch);
+
+        saveFileToDisk(batch.getId(), originalFilename, fileBytes);
+
+        // Resolve Target Instagram Account(s)
+        List<InstagramAccount> targetAccounts = resolveTargetAccounts(user, targetAccountId, targetGroupId);
+
+        boolean isAsync = rows.size() > 199;
+
+        if (isAsync) {
+            // 3. Tell the user file is under process we will let you know once completed.
+            batch.setStatus("PROCESSING_BACKGROUND");
+            bulkImportBatchRepository.save(batch);
+
+            // 4. Process the file in background
+            asyncBulkImportProcessor.processBatchInBackground(
+                    user,
+                    targetAccounts,
+                    batch.getId(),
+                    batch.getFileName(),
+                    rows);
+
+            // 5. Show initial in-progress notification (slides in from right bottom & in notification center)
+            String progressMessage = String.format("File is under process, we will let you know once completed. (Processing %d posts in background)", rows.size());
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .user(user)
+                    .title("Bulk Import Under Process")
+                    .message(progressMessage)
+                    .type(NotificationType.BULK_IMPORT_COMPLETED)
+                    .severity(NotificationSeverity.INFO)
+                    .link("/posts")
+                    .build());
+
+            return ExcelDTOs.BulkProcessResponse.builder()
+                    .batchId(batch.getId())
+                    .fileName(batch.getFileName())
+                    .totalRows(rows.size())
+                    .isAsync(true)
+                    .status("PROCESSING")
+                    .message("File is under process, we will let you know once completed.")
+                    .scheduledCount(0)
+                    .build();
+        } else {
+            // 3. Process the file immediately.
+            int totalTasks = rows.size() * targetAccounts.size();
+            ExecutorService executor = Executors.newFixedThreadPool(Math.min(Math.max(totalTasks, 1), 8));
+            List<Future<Boolean>> futures = new ArrayList<>();
+
+            for (InstagramAccount account : targetAccounts) {
+                for (ExcelDTOs.ExcelRowPreview row : rows) {
+                    futures.add(executor.submit(() -> asyncBulkImportProcessor.processAndSaveSingleRow(user, account, row)));
+                }
+            }
+
+            int successCount = 0;
+            for (Future<Boolean> future : futures) {
+                try {
+                    if (future.get(20, TimeUnit.SECONDS)) {
+                        successCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing immediate row in batch {}", batch.getId(), e);
+                }
+            }
+            executor.shutdown();
+
+            batch.setStatus("COMPLETED");
+            bulkImportBatchRepository.save(batch);
+
+            // 4. Show the notification on the screen (Immediate slide from right bottom & in notifications)
+            String successMsg = targetAccounts.size() > 1
+                    ? String.format("Successfully scheduled %d post(s) across %d account(s) immediately.", successCount, targetAccounts.size())
+                    : String.format("Successfully scheduled %d post(s) immediately.", successCount);
+
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .user(user)
+                    .title("Bulk Import Completed")
+                    .message(successMsg)
+                    .type(NotificationType.BULK_IMPORT_COMPLETED)
+                    .severity(NotificationSeverity.SUCCESS)
+                    .link("/posts")
+                    .build());
+
+            return ExcelDTOs.BulkProcessResponse.builder()
+                    .batchId(batch.getId())
+                    .fileName(batch.getFileName())
+                    .totalRows(rows.size())
+                    .isAsync(false)
+                    .status("COMPLETED")
+                    .message(successMsg)
+                    .scheduledCount(successCount)
+                    .build();
+        }
+    }
+
+    private void saveFileToDisk(Long batchId, String originalFilename, byte[] fileBytes) {
+        try {
+            Path uploadDir = Paths.get("uploads", "excel");
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            String sanitized = (originalFilename != null ? originalFilename : "posts.xlsx")
+                    .replaceAll("[^a-zA-Z0-9._-]", "_");
+            Path filePath = uploadDir.resolve("batch_" + batchId + "_" + sanitized);
+            Files.write(filePath, fileBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            log.info("Saved original Excel file verbatim to disk at: {}", filePath.toAbsolutePath());
+        } catch (IOException e) {
+            log.warn("Could not save copy of Excel file to disk: {}", e.getMessage());
+        }
+    }
+
+    private List<InstagramAccount> resolveTargetAccounts(User user, Long targetAccountId, Long targetGroupId) {
+        List<InstagramAccount> targetAccounts = new ArrayList<>();
+
+        if (targetGroupId != null) {
+            AccountGroup group = accountGroupRepository.findById(targetGroupId)
+                    .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "GROUP_NOT_FOUND", "Account group not found"));
+            if (!group.getUserId().equals(user.getId())) {
+                throw new APIException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied to this group");
+            }
+            if (group.getAccountIds() != null && !group.getAccountIds().isEmpty()) {
+                targetAccounts = instagramAccountRepository.findAllById(group.getAccountIds()).stream()
+                        .filter(acc -> acc.getUser().getId().equals(user.getId()))
+                        .toList();
+            }
+            if (targetAccounts.isEmpty()) {
+                throw new APIException(HttpStatus.BAD_REQUEST, "EMPTY_GROUP",
+                        "The selected account group does not contain any connected accounts");
+            }
+        } else if (targetAccountId != null) {
+            InstagramAccount targetAccount = instagramAccountRepository.findById(targetAccountId).orElse(null);
+            if (targetAccount != null && targetAccount.getUser().getId().equals(user.getId())) {
+                targetAccounts.add(targetAccount);
+            }
+        }
+
+        if (targetAccounts.isEmpty()) {
+            InstagramAccount defaultAcc = instagramAccountRepository.findByUserId(user.getId()).stream().findFirst().orElse(null);
+            if (defaultAcc != null) {
+                targetAccounts.add(defaultAcc);
+            }
+        }
+
+        if (targetAccounts.isEmpty()) {
+            throw new APIException(HttpStatus.BAD_REQUEST, "NO_TARGET_ACCOUNT",
+                    "No target Instagram account available. Please connect an account first.");
+        }
+
+        return targetAccounts;
+    }
+
+    /**
      * Multithreaded insertion of selected or all valid Excel rows into DB.
      */
     public ExcelDTOs.CommitBatchResponse commitBatchMultithreaded(User user, ExcelDTOs.CommitBatchRequest request) {
@@ -295,6 +516,15 @@ public class ExcelImportService {
         String message = targetAccounts.size() > 1
                 ? String.format("Successfully scheduled %d post(s) across %d account(s) in group via multithreaded processing.", successCount, targetAccounts.size())
                 : String.format("Successfully scheduled %d post(s) via multithreaded processing.", successCount);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .user(user)
+                .title("Bulk Import Completed")
+                .message(message)
+                .type(NotificationType.BULK_IMPORT_COMPLETED)
+                .severity(NotificationSeverity.SUCCESS)
+                .link("/posts")
+                .build());
 
         return ExcelDTOs.CommitBatchResponse.builder()
                 .batchId(batch.getId())
@@ -443,20 +673,19 @@ public class ExcelImportService {
 
         // 2. Caption & Hashtags Validation
         if (row.getCaption() == null || row.getCaption().isBlank()) {
-            errors.add("[Caption & Hashtags] Caption is required (Column " + (2 + colOffset) + "). Please enter post text or hashtags.");
+            errors.add("Row " + row.getRowIndex() + " is missing caption. Caption is required.");
         } else if (row.getCaption().length() > 2200) {
-            errors.add("[Caption & Hashtags] Caption length (" + row.getCaption().length()
-                    + " chars) exceeds Instagram's 2,200 character limit.");
+            errors.add("Row " + row.getRowIndex() + " caption exceeds Instagram's 2,200 character limit (" + row.getCaption().length() + " chars).");
         }
 
         // 3. Post Type Validation
         if (row.getPostType() == null || row.getPostType().isBlank()) {
-            errors.add("[Post Type] Post Type is required (Column " + (5 + colOffset) + "). Allowed options: IMAGE, REEL, STORY, CAROUSEL, VIDEO.");
+            errors.add("Row " + row.getRowIndex() + " is missing Post Type. Allowed options: IMAGE, REEL, STORY, CAROUSEL, VIDEO.");
         } else {
             String pt = row.getPostType().trim().toUpperCase();
             if (!Set.of("IMAGE", "VIDEO", "REEL", "REELS", "STORY", "CAROUSEL").contains(pt)) {
-                errors.add("[Post Type] Invalid Post Type '" + row.getPostType()
-                        + "' (Column " + (5 + colOffset) + "). Allowed options: IMAGE, REEL, STORY, CAROUSEL, VIDEO.");
+                errors.add("Row " + row.getRowIndex() + " has invalid Post Type '" + row.getPostType()
+                        + "'. Allowed options: IMAGE, REEL, STORY, CAROUSEL, VIDEO.");
             } else {
                 if ("REELS".equalsIgnoreCase(pt))
                     pt = "REEL";
@@ -466,33 +695,33 @@ public class ExcelImportService {
 
         // 4. Media Source URL Validation
         if (row.getMediaUrl() == null || row.getMediaUrl().isBlank()) {
-            errors.add("[Media Source URL] Media URL is required (Column " + (4 + colOffset) + "). Please enter a valid image/video web link.");
+            errors.add("Row " + row.getRowIndex() + " is missing Media Source URL. Please enter a valid image/video web link.");
         } else {
             try {
                 new URL(row.getMediaUrl()).toURI();
                 String lowerUrl = row.getMediaUrl().toLowerCase();
                 if ("REEL".equalsIgnoreCase(row.getPostType()) && (lowerUrl.endsWith(".jpg")
                         || lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".png") || lowerUrl.endsWith(".webp"))) {
-                    errors.add("[Media Source URL] Post Type is 'REEL' but media URL points to an image file. Reels require a video file (.mp4, .mov).");
+                    errors.add("Row " + row.getRowIndex() + " post type is 'REEL' but media URL is an image file. Reels require a video file (.mp4, .mov).");
                 }
             } catch (Exception e) {
-                errors.add("[Media Source URL] Invalid URL format '" + row.getMediaUrl()
-                        + "' (Column " + (4 + colOffset) + "). URL must start with http:// or https://.");
+                errors.add("Row " + row.getRowIndex() + " has invalid Media URL format: '" + row.getMediaUrl()
+                        + "'. URL must start with http:// or https://.");
             }
         }
 
         // 5. Schedule Time Validation (Single Column)
         LocalDateTime parsedTime = parseCellCombinedDate(timeCell, row.getScheduledTimeStr());
         if (parsedTime == null) {
-            parsedTime = parseDateTimeFallback(timeCell, row.getScheduledTimeStr(), errors, colOffset);
+            parsedTime = parseDateTimeFallback(row, timeCell, row.getScheduledTimeStr(), errors, colOffset);
         }
 
         if (parsedTime != null) {
             row.setScheduledTime(parsedTime);
             row.setScheduledTimeStr(parsedTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             if (parsedTime.isBefore(LocalDateTime.now().minusMinutes(1))) {
-                errors.add("[Schedule Time] The scheduled timestamp '" + row.getScheduledTimeStr()
-                        + "' is in the past. Schedule time must be in the future.");
+                errors.add("Row " + row.getRowIndex() + " has past date: '" + row.getScheduledTimeStr()
+                        + "'. Schedule time must be in the future.");
             }
         }
 
@@ -501,9 +730,9 @@ public class ExcelImportService {
         }
     }
 
-    private LocalDateTime parseDateTimeFallback(Cell cell, String cellStr, List<String> errors, int colOffset) {
+    private LocalDateTime parseDateTimeFallback(ExcelDTOs.ExcelRowPreview row, Cell cell, String cellStr, List<String> errors, int colOffset) {
         if (cellStr == null || cellStr.isBlank()) {
-            errors.add("[Schedule Time] Schedule Time is required (Column " + (3 + colOffset) + "). Expected format: YYYY-MM-DD HH:mm:ss.");
+            errors.add("Row " + row.getRowIndex() + " is missing Schedule Time. Expected format: YYYY-MM-DD HH:mm:ss.");
             return null;
         }
 
@@ -512,8 +741,8 @@ public class ExcelImportService {
             return localDate.atStartOfDay();
         }
 
-        errors.add("[Schedule Time] Could not parse Schedule Time '" + cellStr
-                + "' (Column " + (3 + colOffset) + "). Expected format: YYYY-MM-DD HH:mm:ss or YYYY-MM-DD HH:mm.");
+        errors.add("Row " + row.getRowIndex() + " has invalid Schedule Time: '" + cellStr
+                + "'. Expected format: YYYY-MM-DD HH:mm:ss or YYYY-MM-DD HH:mm.");
         return null;
     }
 

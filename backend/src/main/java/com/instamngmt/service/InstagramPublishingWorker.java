@@ -5,8 +5,10 @@ import com.instamngmt.repository.*;
 import com.instamngmt.util.EncryptionUtil;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import com.instamngmt.event.NotificationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class InstagramPublishingWorker {
     private final RateLimitService rateLimitService;
     private final ErrorTaxonomyService errorTaxonomyService;
     private final EncryptionUtil encryptionUtil;
+    private final ApplicationEventPublisher eventPublisher;
 
     public InstagramPublishingWorker(
             ScheduledPostRepository scheduledPostRepository,
@@ -33,13 +36,15 @@ public class InstagramPublishingWorker {
             InstagramClientService instagramClientService,
             RateLimitService rateLimitService,
             ErrorTaxonomyService errorTaxonomyService,
-            EncryptionUtil encryptionUtil) {
+            EncryptionUtil encryptionUtil,
+            ApplicationEventPublisher eventPublisher) {
         this.scheduledPostRepository = scheduledPostRepository;
         this.publishingAttemptRepository = publishingAttemptRepository;
         this.instagramClientService = instagramClientService;
         this.rateLimitService = rateLimitService;
         this.errorTaxonomyService = errorTaxonomyService;
         this.encryptionUtil = encryptionUtil;
+        this.eventPublisher = eventPublisher;
     }
 
     @Async
@@ -69,6 +74,14 @@ public class InstagramPublishingWorker {
             post.setNextAttemptAt(LocalDateTime.now().plusHours(1));
             post.setFailureReason("Instagram 24-hour publishing rate limit reached. Rescheduled.");
             scheduledPostRepository.save(post);
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .user(post.getUser())
+                    .title("Rate Limit Warning")
+                    .message("Instagram 24-hour rate limit reached for @" + account.getUsername() + ". Post #" + post.getId() + " rescheduled.")
+                    .type(NotificationType.RATE_LIMIT_WARNING)
+                    .severity(NotificationSeverity.WARNING)
+                    .link("/instagram/accounts")
+                    .build());
             return;
         }
 
@@ -165,6 +178,15 @@ public class InstagramPublishingWorker {
             recordAttempt(post, attemptNum, OperationType.PUBLISH_MEDIA, 200, null, false, "Published successfully! Media ID: " + mediaId, null);
             log.info("Successfully published post {} to Instagram! Media ID: {}", post.getId(), mediaId);
 
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .user(post.getUser())
+                    .title("Post Published")
+                    .message("Post #" + post.getId() + " was successfully published to @" + account.getUsername())
+                    .type(NotificationType.POST_PUBLISHED)
+                    .severity(NotificationSeverity.SUCCESS)
+                    .link("/posts")
+                    .build());
+
         } catch (Exception ex) {
             log.error("Exception occurred while publishing post {}", post.getId(), ex);
             boolean retryable = errorTaxonomyService.isRetryable(500, ex.getMessage());
@@ -177,6 +199,15 @@ public class InstagramPublishingWorker {
                 long backoffSeconds = (long) Math.pow(2, attemptNum) * 15;
                 post.setNextAttemptAt(LocalDateTime.now().plusSeconds(backoffSeconds));
                 scheduledPostRepository.save(post);
+
+                eventPublisher.publishEvent(NotificationEvent.builder()
+                        .user(post.getUser())
+                        .title("Publishing Delayed / Retrying")
+                        .message("Post #" + post.getId() + " hit an error and will retry at " + post.getNextAttemptAt())
+                        .type(NotificationType.POST_RETRYING)
+                        .severity(NotificationSeverity.WARNING)
+                        .link("/posts")
+                        .build());
             } else {
                 markFailedTerminal(post, ex.getMessage());
             }
@@ -191,6 +222,15 @@ public class InstagramPublishingWorker {
             post.setFailureReason("Meta API circuit breaker active: " + t.getMessage());
             post.setNextAttemptAt(LocalDateTime.now().plusMinutes(5));
             scheduledPostRepository.save(post);
+
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .user(post.getUser())
+                    .title("Circuit Breaker Active")
+                    .message("Meta API publishing temporarily paused: " + t.getMessage())
+                    .type(NotificationType.CIRCUIT_BREAKER_ACTIVE)
+                    .severity(NotificationSeverity.ERROR)
+                    .link("/dashboard")
+                    .build());
         }
     }
 
@@ -199,6 +239,15 @@ public class InstagramPublishingWorker {
         post.setFailureReason(reason);
         scheduledPostRepository.save(post);
         log.error("Post {} marked as FAILED_TERMINAL: {}", post.getId(), reason);
+
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .user(post.getUser())
+                .title("Publishing Failed")
+                .message("Post #" + post.getId() + " failed permanently: " + reason)
+                .type(NotificationType.POST_FAILED)
+                .severity(NotificationSeverity.ERROR)
+                .link("/posts")
+                .build());
     }
 
     private void recordAttempt(ScheduledPost post, int attemptNum, OperationType op, Integer status, String errCode, boolean isRetryable, String body, String errorMsg) {

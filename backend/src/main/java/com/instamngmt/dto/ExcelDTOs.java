@@ -65,4 +65,19 @@ public class ExcelDTOs {
         private int committedCount;
         private String message;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BulkProcessResponse {
+        private Long batchId;
+        private String fileName;
+        private int totalRows;
+        @com.fasterxml.jackson.annotation.JsonProperty("isAsync")
+        private boolean isAsync;
+        private String status;
+        private String message;
+        private int scheduledCount;
+    }
 }

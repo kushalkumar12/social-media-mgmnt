@@ -1006,6 +1006,17 @@ input, textarea, select {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slideInRightBottom {
+  from {
+    transform: translateY(60px) translateX(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
 .animate-fade {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

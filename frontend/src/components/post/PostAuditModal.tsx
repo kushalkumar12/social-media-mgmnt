@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../../services/api';
 import { ScheduledPost } from '../../types';
 import { StatusBadge } from '../StatusBadge';
 import { X, Eye, Clock, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
@@ -8,7 +9,20 @@ interface PostAuditModalProps {
   onClose: () => void;
 }
 
-export const PostAuditModal: React.FC<PostAuditModalProps> = ({ post, onClose }) => {
+export const PostAuditModal: React.FC<PostAuditModalProps> = ({ post: initialPost, onClose }) => {
+  const [post, setPost] = useState<ScheduledPost | null>(initialPost);
+
+  useEffect(() => {
+    setPost(initialPost);
+    if (initialPost?.id) {
+      api.get(`/posts/${initialPost.id}`).then((res) => {
+        setPost(res.data);
+      }).catch((err) => {
+        console.error('Failed to fetch post audit details', err);
+      });
+    }
+  }, [initialPost]);
+
   if (!post) return null;
 
   return (

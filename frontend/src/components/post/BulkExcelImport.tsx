@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { excelService, ExcelUploadResponse } from '../../services/excelService';
 import { InstagramAccount } from '../../types';
 import { AccountGroupDTO } from '../../services/groupService';
+import { useNotifications } from '../../context/NotificationContext';
 import {
   FileSpreadsheet,
   Download,
@@ -12,6 +13,9 @@ import {
   AlertCircle,
   Users,
   User,
+  Clock,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 
 interface BulkExcelImportProps {
@@ -22,10 +26,12 @@ interface BulkExcelImportProps {
 
 export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, groups = [], onPreviewMedia }) => {
   const navigate = useNavigate();
+  const { showToast } = useNotifications();
 
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelPreview, setExcelPreview] = useState<ExcelUploadResponse | null>(null);
-  const [parsingExcel, setParsingExcel] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'DIRECT' | 'PREVIEW'>('DIRECT');
+  const [processing, setProcessing] = useState(false);
   const [committingExcel, setCommittingExcel] = useState(false);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [targetType, setTargetType] = useState<'ACCOUNT' | 'GROUP'>(
@@ -39,6 +45,7 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
   );
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
 
   const handleDownloadTemplate = async () => {
     try {
@@ -54,19 +61,57 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
     setExcelFile(file);
     setError('');
     setSuccessMsg('');
-    setParsingExcel(true);
+    setInfoMsg('');
+    setProcessing(true);
 
-    try {
-      const res = await excelService.uploadExcel(file);
-      setExcelPreview(res);
-      // Auto-select valid rows by default
-      const validIndices = res.rows.filter((r) => r.valid).map((r) => r.rowIndex);
-      setSelectedRows(validIndices);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to parse uploaded Excel file.');
-      setExcelPreview(null);
-    } finally {
-      setParsingExcel(false);
+    const accountId = targetType === 'ACCOUNT' && selectedAccountId ? Number(selectedAccountId) : undefined;
+    const groupId = targetType === 'GROUP' && selectedGroupId ? Number(selectedGroupId) : undefined;
+
+    if (uploadMode === 'DIRECT') {
+      try {
+        const res = await excelService.uploadAndSchedule(file, accountId, groupId);
+
+        if (res.isAsync) {
+          // record > 199: Tell user file is under process we will let you know once completed
+          const msg = res.message || 'File is under process, we will let you know once completed.';
+          setInfoMsg(`${msg} (Processing ${res.totalRows} posts in background)`);
+          showToast(
+            'Bulk Ingestion In Progress',
+            `${msg} (Processing ${res.totalRows} posts in background)`,
+            'INFO',
+            '/posts'
+          );
+        } else {
+          // record < 200: Processed immediately
+          const msg = res.message || `Successfully scheduled ${res.scheduledCount} posts immediately.`;
+          setSuccessMsg(msg);
+          showToast('Bulk Ingestion Completed', msg, 'SUCCESS', '/posts');
+          setTimeout(() => {
+            navigate('/posts');
+          }, 2000);
+        }
+      } catch (err: any) {
+        const errMsg = err.response?.data?.message || err.message || 'Failed to process Excel spreadsheet.';
+        setError(errMsg);
+        showToast('Validation Error', errMsg, 'ERROR');
+      } finally {
+        setProcessing(false);
+      }
+    } else {
+      // PREVIEW MODE
+      try {
+        const res = await excelService.uploadExcel(file);
+        setExcelPreview(res);
+        const validIndices = res.rows.filter((r) => r.valid).map((r) => r.rowIndex);
+        setSelectedRows(validIndices);
+      } catch (err: any) {
+        const errMsg = err.response?.data?.message || 'Failed to parse uploaded Excel file.';
+        setError(errMsg);
+        setExcelPreview(null);
+        showToast('Validation Error', errMsg, 'ERROR');
+      } finally {
+        setProcessing(false);
+      }
     }
   };
 
@@ -114,6 +159,7 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
         targetType === 'GROUP' && selectedGroupId ? Number(selectedGroupId) : undefined
       );
       setSuccessMsg(res.message || 'Batch scheduled successfully!');
+      showToast('Bulk Ingestion Completed', res.message || 'Batch scheduled successfully!', 'SUCCESS', '/posts');
       setTimeout(() => {
         navigate('/posts');
       }, 1500);
@@ -160,41 +206,304 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
         </button>
       </div>
 
+      {/* Threshold Information Card */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '16px',
+        }}
+      >
+        <div
+          className="glass-card"
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            borderLeft: '4px solid var(--accent-green)',
+          }}
+        >
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--accent-green-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Zap size={20} color="var(--accent-green)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Standard Batches (&lt; 200 rows)
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Validated, preserved as-it-is, and processed <strong>immediately</strong> with an instant completion alert.
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="glass-card"
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            borderLeft: '4px solid var(--primary-blue)',
+          }}
+        >
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--primary-blue-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Clock size={20} color="var(--primary-blue)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Large Batches (&gt; 199 rows)
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Validated, saved as-it-is, and processed in <strong>background</strong> with real-time notification alerts.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Target Destination & Upload Mode Configuration Card */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '18px 22px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Target Destination:
+          </span>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              background: '#E2E8F0',
+              padding: '3px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8rem',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setTargetType('GROUP')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-xs)',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                background: targetType === 'GROUP' ? '#FFFFFF' : 'transparent',
+                color: targetType === 'GROUP' ? 'var(--primary-blue)' : 'var(--text-secondary)',
+                boxShadow: targetType === 'GROUP' ? 'var(--shadow-xs)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <Users size={14} />
+              <span>Account Group</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTargetType('ACCOUNT')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-xs)',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                background: targetType === 'ACCOUNT' ? '#FFFFFF' : 'transparent',
+                color: targetType === 'ACCOUNT' ? 'var(--primary-blue)' : 'var(--text-secondary)',
+                boxShadow: targetType === 'ACCOUNT' ? 'var(--shadow-xs)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <User size={14} />
+              <span>Single Account</span>
+            </button>
+          </div>
+
+          {targetType === 'GROUP' ? (
+            groups && groups.length > 0 ? (
+              <select
+                className="form-select"
+                style={{ width: 'auto', padding: '6px 12px', fontSize: '0.84rem', fontWeight: 500 }}
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(Number(e.target.value))}
+              >
+                {groups.map((grp) => (
+                  <option key={grp.id} value={grp.id}>
+                    👥 {grp.groupName} ({grp.memberCount} account{grp.memberCount === 1 ? '' : 's'})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontSize: '0.82rem', color: 'var(--accent-red)', fontWeight: 500 }}>
+                No groups found. Please create a group in Account Management.
+              </span>
+            )
+          ) : (
+            <select
+              className="form-select"
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '0.84rem' }}
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+            >
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  @{acc.username}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Upload Mode Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Mode:</span>
+          <div
+            style={{
+              display: 'inline-flex',
+              background: '#F1F5F9',
+              padding: '3px',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setUploadMode('DIRECT');
+                setExcelPreview(null);
+              }}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-xs)',
+                fontWeight: 600,
+                fontSize: '0.78rem',
+                background: uploadMode === 'DIRECT' ? '#FFFFFF' : 'transparent',
+                color: uploadMode === 'DIRECT' ? 'var(--primary-blue)' : 'var(--text-secondary)',
+                boxShadow: uploadMode === 'DIRECT' ? 'var(--shadow-xs)' : 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Upload & Schedule
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadMode('PREVIEW')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-xs)',
+                fontWeight: 600,
+                fontSize: '0.78rem',
+                background: uploadMode === 'PREVIEW' ? '#FFFFFF' : 'transparent',
+                color: uploadMode === 'PREVIEW' ? 'var(--primary-blue)' : 'var(--text-secondary)',
+                boxShadow: uploadMode === 'PREVIEW' ? 'var(--shadow-xs)' : 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Preview First
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Validation Error Banner with Clear Best Message */}
       {error && (
         <div
           style={{
             background: 'var(--accent-red-light)',
             border: '1px solid var(--accent-red-border)',
             color: 'var(--accent-red)',
-            padding: '12px 16px',
+            padding: '14px 18px',
             borderRadius: 'var(--radius-md)',
-            fontSize: '0.86rem',
+            fontSize: '0.88rem',
             display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
+            alignItems: 'flex-start',
+            gap: '12px',
           }}
         >
-          <AlertCircle size={16} style={{ flexShrink: 0 }} />
-          <span>{error}</span>
+          <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: '2px' }}>Spreadsheet Validation Error:</div>
+            <div>{error}</div>
+          </div>
         </div>
       )}
 
+      {/* In-progress Info Banner for > 199 Records */}
+      {infoMsg && (
+        <div
+          style={{
+            background: 'var(--primary-blue-light)',
+            border: '1px solid #BFDBFE',
+            color: 'var(--primary-blue)',
+            padding: '14px 18px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <Clock size={18} style={{ flexShrink: 0 }} />
+          <div>
+            <strong>Batch Queued:</strong> {infoMsg}
+          </div>
+        </div>
+      )}
+
+      {/* Immediate Success Banner */}
       {successMsg && (
         <div
           style={{
             background: 'var(--accent-green-light)',
             border: '1px solid var(--accent-green-border)',
             color: 'var(--accent-green)',
-            padding: '12px 16px',
+            padding: '14px 18px',
             borderRadius: 'var(--radius-md)',
-            fontSize: '0.86rem',
+            fontSize: '0.88rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '12px',
           }}
         >
-          <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
-          <span>{successMsg} Redirecting to Scheduled Posts...</span>
+          <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+          <div>
+            <strong>Success:</strong> {successMsg}
+          </div>
         </div>
       )}
 
@@ -206,33 +515,38 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '48px 24px',
+            padding: '52px 24px',
             border: '2px dashed var(--border-color)',
             borderRadius: 'var(--radius-xl)',
             background: '#F8FAFC',
-            cursor: 'pointer',
+            cursor: processing ? 'wait' : 'pointer',
             textAlign: 'center',
             transition: 'border-color var(--transition-fast)',
           }}
         >
-          <FileSpreadsheet size={44} color="var(--primary-blue)" style={{ marginBottom: '14px' }} />
-          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {parsingExcel ? 'Parsing Spreadsheet...' : 'Drop Excel File here or Click to Browse'}
+          {processing ? (
+            <Loader2 size={48} color="var(--primary-blue)" className="animate-spin" style={{ marginBottom: '14px' }} />
+          ) : (
+            <FileSpreadsheet size={48} color="var(--primary-blue)" style={{ marginBottom: '14px' }} />
+          )}
+
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {processing ? 'Validating & Processing Spreadsheet...' : 'Drop Excel File here or Click to Browse'}
           </div>
-          <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Supports .xlsx and .xls formatted spreadsheets
+          <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
+            Supports standardized .xlsx and .xls files • Max 2,200 characters per caption
           </div>
           <input
             type="file"
             accept=".xlsx, .xls"
             onChange={handleFileSelect}
             style={{ display: 'none' }}
-            disabled={parsingExcel}
+            disabled={processing}
           />
         </label>
       )}
 
-      {/* Excel Preview Results */}
+      {/* Preview Table Mode (If enabled) */}
       {excelPreview && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Summary Cards */}
@@ -264,134 +578,25 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
             </div>
           </div>
 
-          {/* Account override selector & Commit toolbar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px',
-              padding: '14px 18px',
-              background: '#F8FAFC',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Target Destination:
-              </span>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={toggleSelectAllValid}
+              className="btn-secondary"
+              style={{ padding: '7px 12px', fontSize: '0.82rem' }}
+            >
+              {selectedRows.length === excelPreview.validRows ? 'Deselect All' : 'Select All Valid'}
+            </button>
 
-              {/* Toggle Target Destination Mode */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  background: '#E2E8F0',
-                  padding: '3px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8rem',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setTargetType('GROUP')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: 'var(--radius-xs)',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    background: targetType === 'GROUP' ? '#FFFFFF' : 'transparent',
-                    color: targetType === 'GROUP' ? 'var(--primary-blue)' : 'var(--text-secondary)',
-                    boxShadow: targetType === 'GROUP' ? 'var(--shadow-xs)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Users size={14} />
-                  <span>Account Group</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTargetType('ACCOUNT')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: 'var(--radius-xs)',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    background: targetType === 'ACCOUNT' ? '#FFFFFF' : 'transparent',
-                    color: targetType === 'ACCOUNT' ? 'var(--primary-blue)' : 'var(--text-secondary)',
-                    boxShadow: targetType === 'ACCOUNT' ? 'var(--shadow-xs)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <User size={14} />
-                  <span>Single Account</span>
-                </button>
-              </div>
-
-              {targetType === 'GROUP' ? (
-                groups && groups.length > 0 ? (
-                  <select
-                    className="form-select"
-                    style={{ width: 'auto', padding: '6px 12px', fontSize: '0.84rem', fontWeight: 500 }}
-                    value={selectedGroupId}
-                    onChange={(e) => setSelectedGroupId(Number(e.target.value))}
-                  >
-                    {groups.map((grp) => (
-                      <option key={grp.id} value={grp.id}>
-                        👥 {grp.groupName} ({grp.memberCount} account{grp.memberCount === 1 ? '' : 's'})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span style={{ fontSize: '0.82rem', color: 'var(--accent-red)', fontWeight: 500 }}>
-                    No groups found. Please create a group in Account Management.
-                  </span>
-                )
-              ) : (
-                <select
-                  className="form-select"
-                  style={{ width: 'auto', padding: '6px 12px', fontSize: '0.84rem' }}
-                  value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(Number(e.target.value))}
-                >
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      @{acc.username}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={toggleSelectAllValid}
-                className="btn-secondary"
-                style={{ padding: '7px 12px', fontSize: '0.82rem' }}
-              >
-                {selectedRows.length === excelPreview.validRows ? 'Deselect All' : 'Select All Valid'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCommitBatch}
-                disabled={committingExcel || selectedRows.length === 0}
-                className="btn-primary"
-                style={{ padding: '7px 16px', fontSize: '0.84rem' }}
-              >
-                {committingExcel ? 'Committing Batch...' : `Schedule Selected (${selectedRows.length})`}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleCommitBatch}
+              disabled={committingExcel || selectedRows.length === 0}
+              className="btn-primary"
+              style={{ padding: '7px 16px', fontSize: '0.84rem' }}
+            >
+              {committingExcel ? 'Committing Batch...' : `Schedule Selected (${selectedRows.length})`}
+            </button>
           </div>
 
           {/* Ingestion Rows Table */}
@@ -428,39 +633,47 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
                           style={{
                             width: '16px',
                             height: '16px',
-                            cursor: row.valid ? 'pointer' : 'not-allowed',
                             accentColor: 'var(--primary-blue)',
+                            cursor: row.valid ? 'pointer' : 'not-allowed',
                           }}
                         />
                       </td>
-                      <td style={{ fontWeight: 600, color: 'var(--text-muted)' }}>#{row.rowIndex}</td>
+
+                      <td style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>#{row.rowIndex}</td>
+
                       <td>
                         {row.valid ? (
-                          <span className="badge badge-published">
-                            <CheckCircle2 size={11} /> Valid
+                          <span className="badge badge-success" style={{ gap: '4px' }}>
+                            <CheckCircle2 size={12} />
+                            <span>Valid</span>
                           </span>
                         ) : (
-                          <span className="badge badge-failed">
-                            <AlertTriangle size={11} /> Error
+                          <span className="badge badge-danger" style={{ gap: '4px' }}>
+                            <AlertCircle size={12} />
+                            <span>Invalid</span>
                           </span>
                         )}
                       </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {row.scheduledTimeStr || 'Invalid format'}
-                      </td>
-                      <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-blue)' }}>
-                        {row.postType || 'IMAGE'}
-                      </td>
+
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {row.scheduledTimeStr || 'Invalid / Missing'}
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="badge badge-info">{row.postType}</span>
+                      </td>
+
+                      <td style={{ maxWidth: '200px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span
                             style={{
-                              maxWidth: '180px',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                               fontSize: '0.8rem',
-                              fontFamily: 'monospace',
+                              color: 'var(--text-secondary)',
                             }}
                           >
                             {row.mediaUrl}
@@ -469,21 +682,51 @@ export const BulkExcelImport: React.FC<BulkExcelImportProps> = ({ accounts, grou
                             <button
                               type="button"
                               onClick={() =>
-                                onPreviewMedia({ url: row.mediaUrl, postType: row.postType })
+                                onPreviewMedia({
+                                  url: row.mediaUrl,
+                                  postType: row.postType,
+                                  name: row.name,
+                                })
                               }
-                              className="btn-ghost"
-                              style={{ padding: '2px 4px' }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--primary-blue)',
+                                cursor: 'pointer',
+                                padding: '2px',
+                              }}
                               title="Preview Media"
                             >
-                              <Eye size={13} />
+                              <Eye size={14} />
                             </button>
                           )}
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.82rem', color: row.valid ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                        {row.validationErrors && row.validationErrors.length > 0
-                          ? row.validationErrors.join('; ')
-                          : 'Row passed format and timestamp checks'}
+
+                      <td>
+                        {row.valid ? (
+                          <span style={{ fontSize: '0.78rem', color: 'var(--accent-green)', fontWeight: 500 }}>
+                            Ready for ingest
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            {row.validationErrors.map((errText, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  fontSize: '0.78rem',
+                                  color: 'var(--accent-red)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                                <span>{errText}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

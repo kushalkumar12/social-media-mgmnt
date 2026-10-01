@@ -104,6 +104,15 @@ public class PostController {
         return ResponseEntity.ok(excelImportService.uploadAndPreviewExcel(user, file));
     }
 
+    @PostMapping("/upload-and-schedule")
+    public ResponseEntity<ExcelDTOs.BulkProcessResponse> uploadAndScheduleExcel(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "targetAccountId", required = false) Long targetAccountId,
+            @RequestParam(value = "targetGroupId", required = false) Long targetGroupId) {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(excelImportService.uploadAndProcessExcel(user, file, targetAccountId, targetGroupId));
+    }
+
     @PostMapping("/commit-excel-batch")
     public ResponseEntity<ExcelDTOs.CommitBatchResponse> commitExcelBatch(
             @RequestBody ExcelDTOs.CommitBatchRequest request) {

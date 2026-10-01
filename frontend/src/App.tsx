@@ -1,6 +1,8 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { NotificationToast } from './components/NotificationToast';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { PageSkeleton } from './components/common/Skeleton';
@@ -97,27 +99,30 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <Router>
-        <Suspense fallback={<div style={{ padding: 'var(--space-8)' }}><PageSkeleton /></div>}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <NotificationProvider>
+        <Router>
+          <NotificationToast />
+          <Suspense fallback={<div style={{ padding: 'var(--space-8)' }}><PageSkeleton /></div>}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
-            <Route path="/posts" element={<ProtectedLayout><PostsPage /></ProtectedLayout>} />
-            <Route path="/posts/create" element={<ProtectedLayout><CreatePostPage /></ProtectedLayout>} />
-            <Route path="/calendar" element={<ProtectedLayout><CalendarPage /></ProtectedLayout>} />
-            <Route path="/media" element={<ProtectedLayout><MediaPage /></ProtectedLayout>} />
-            <Route path="/instagram/accounts" element={<ProtectedLayout><InstagramConnectPage /></ProtectedLayout>} />
-            <Route path="/plans" element={<ProtectedLayout><PlansPage /></ProtectedLayout>} />
-            <Route path="/settings" element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
-            <Route path="/admin/settings" element={<ProtectedLayout><AdminSettingsPage /></ProtectedLayout>} />
+              <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
+              <Route path="/posts" element={<ProtectedLayout><PostsPage /></ProtectedLayout>} />
+              <Route path="/posts/create" element={<ProtectedLayout><CreatePostPage /></ProtectedLayout>} />
+              <Route path="/calendar" element={<ProtectedLayout><CalendarPage /></ProtectedLayout>} />
+              <Route path="/media" element={<ProtectedLayout><MediaPage /></ProtectedLayout>} />
+              <Route path="/instagram/accounts" element={<ProtectedLayout><InstagramConnectPage /></ProtectedLayout>} />
+              <Route path="/plans" element={<ProtectedLayout><PlansPage /></ProtectedLayout>} />
+              <Route path="/settings" element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
+              <Route path="/admin/settings" element={<ProtectedLayout><AdminSettingsPage /></ProtectedLayout>} />
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
-      </Router>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 };

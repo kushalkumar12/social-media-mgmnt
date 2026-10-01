@@ -6,12 +6,15 @@ import com.instamngmt.entity.*;
 import com.instamngmt.exception.APIException;
 import com.instamngmt.exception.ResourceNotFoundException;
 import com.instamngmt.repository.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -136,20 +139,28 @@ public class PostService {
     public List<PostDTOs.ScheduledPostDTO> getUserPosts(User user) {
         return scheduledPostRepository.findByUserIdOrderByScheduledAtDesc(user.getId())
                 .stream()
-                .map(this::mapToDTO)
+                .map(p -> mapToDTO(p, false))
+                .collect(Collectors.toList());
+    }
+
+    public List<PostDTOs.ScheduledPostDTO> getUpcomingPosts(User user, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return scheduledPostRepository.findRecentPostsWithAccount(user.getId(), pageable)
+                .stream()
+                .map(p -> mapToDTO(p, false))
                 .collect(Collectors.toList());
     }
 
     public PostDTOs.ScheduledPostDTO getPostById(User user, Long id) {
         ScheduledPost post = scheduledPostRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("ScheduledPost", "id", id));
-        return mapToDTO(post);
+        return mapToDTO(post, true);
     }
 
     public List<PostDTOs.ScheduledPostDTO> getCalendarPosts(User user, LocalDateTime start, LocalDateTime end) {
         return scheduledPostRepository.findByUserIdAndScheduledAtBetween(user.getId(), start, end)
                 .stream()
-                .map(this::mapToDTO)
+                .map(p -> mapToDTO(p, false))
                 .collect(Collectors.toList());
     }
 
@@ -273,31 +284,38 @@ public class PostService {
     }
 
     public PostDTOs.ScheduledPostDTO mapToDTO(ScheduledPost post) {
+        return mapToDTO(post, false);
+    }
+
+    public PostDTOs.ScheduledPostDTO mapToDTO(ScheduledPost post, boolean includeAttempts) {
         List<MediaDTOs.MediaDTO> mediaDTOs = post.getMediaItems().stream()
                 .map(item -> mediaService.mapToDTO(item.getMedia()))
                 .collect(Collectors.toList());
 
-        List<PostDTOs.PublishingAttemptDTO> attempts = publishingAttemptRepository
-                .findByScheduledPostIdOrderByCreatedAtDesc(post.getId())
-                .stream()
-                .map(a -> PostDTOs.PublishingAttemptDTO.builder()
-                        .id(a.getId())
-                        .attemptNumber(a.getAttemptNumber())
-                        .operation(a.getOperation().name())
-                        .requestTimestamp(a.getRequestTimestamp())
-                        .responseStatus(a.getResponseStatus())
-                        .metaErrorCode(a.getMetaErrorCode())
-                        .isRetryable(a.getIsRetryable())
-                        .responseBody(a.getResponseBody())
-                        .errorMessage(a.getErrorMessage())
-                        .createdAt(a.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        List<PostDTOs.PublishingAttemptDTO> attempts = Collections.emptyList();
+        if (includeAttempts) {
+            attempts = publishingAttemptRepository
+                    .findByScheduledPostIdOrderByCreatedAtDesc(post.getId())
+                    .stream()
+                    .map(a -> PostDTOs.PublishingAttemptDTO.builder()
+                            .id(a.getId())
+                            .attemptNumber(a.getAttemptNumber())
+                            .operation(a.getOperation().name())
+                            .requestTimestamp(a.getRequestTimestamp())
+                            .responseStatus(a.getResponseStatus())
+                            .metaErrorCode(a.getMetaErrorCode())
+                            .isRetryable(a.getIsRetryable())
+                            .responseBody(a.getResponseBody())
+                            .errorMessage(a.getErrorMessage())
+                            .createdAt(a.getCreatedAt())
+                            .build())
+                    .collect(Collectors.toList());
+        }
 
         return PostDTOs.ScheduledPostDTO.builder()
                 .id(post.getId())
-                .instagramAccountId(post.getInstagramAccount().getId())
-                .instagramUsername(post.getInstagramAccount().getUsername())
+                .instagramAccountId(post.getInstagramAccount() != null ? post.getInstagramAccount().getId() : null)
+                .instagramUsername(post.getInstagramAccount() != null ? post.getInstagramAccount().getUsername() : null)
                 .caption(post.getCaption())
                 .postType(post.getPostType())
                 .idempotencyKey(post.getIdempotencyKey())

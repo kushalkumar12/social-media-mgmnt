@@ -31,6 +31,16 @@ export interface CommitBatchResponse {
   message: string;
 }
 
+export interface BulkProcessResponse {
+  batchId: number;
+  fileName: string;
+  totalRows: number;
+  isAsync: boolean;
+  status: string;
+  message: string;
+  scheduledCount: number;
+}
+
 export const excelService = {
   downloadTemplate: async (): Promise<void> => {
     const response = await api.get('/posts/excel-template', {
@@ -49,6 +59,23 @@ export const excelService = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.post('/posts/upload-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  },
+
+  uploadAndSchedule: async (
+    file: File,
+    targetAccountId?: number,
+    targetGroupId?: number
+  ): Promise<BulkProcessResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (targetAccountId) formData.append('targetAccountId', String(targetAccountId));
+    if (targetGroupId) formData.append('targetGroupId', String(targetGroupId));
+    const response = await api.post<BulkProcessResponse>('/posts/upload-and-schedule', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

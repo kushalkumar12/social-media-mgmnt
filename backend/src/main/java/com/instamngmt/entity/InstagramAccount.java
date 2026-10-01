@@ -5,7 +5,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "instagram_accounts")
+@Table(
+    name = "instagram_accounts",
+    indexes = {
+        @Index(name = "idx_ig_accounts_user_id", columnList = "user_id"),
+        @Index(name = "idx_ig_accounts_ig_user_id", columnList = "ig_user_id")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

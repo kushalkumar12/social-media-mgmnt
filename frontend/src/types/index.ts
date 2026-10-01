@@ -119,3 +119,40 @@ export interface DashboardSummary {
   upcomingPosts: ScheduledPost[];
   accounts: InstagramAccount[];
 }
+
+export type NotificationType =
+  | 'POST_PUBLISHED'
+  | 'POST_FAILED'
+  | 'POST_RETRYING'
+  | 'RATE_LIMIT_WARNING'
+  | 'CIRCUIT_BREAKER_ACTIVE'
+  | 'TOKEN_EXPIRED'
+  | 'TOKEN_REFRESH_FAILED'
+  | 'ACCOUNT_CONNECTED'
+  | 'ACCOUNT_DISCONNECTED'
+  | 'BULK_IMPORT_COMPLETED'
+  | 'SYSTEM_ALERT';
+
+export type NotificationSeverity = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  type: NotificationType;
+  severity: NotificationSeverity;
+  isRead: boolean;
+  link?: string;
+  metadata?: string;
+  createdAt: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  unreadCount: number;
+}
+

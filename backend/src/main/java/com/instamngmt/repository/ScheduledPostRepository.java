@@ -2,6 +2,7 @@ package com.instamngmt.repository;
 
 import com.instamngmt.entity.PostStatus;
 import com.instamngmt.entity.ScheduledPost;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,7 @@ import java.util.Optional;
 @Repository
 public interface ScheduledPostRepository extends JpaRepository<ScheduledPost, Long> {
     List<ScheduledPost> findByUserIdOrderByScheduledAtDesc(Long userId);
+    List<ScheduledPost> findByUserIdOrderByScheduledAtDesc(Long userId, Pageable pageable);
     Optional<ScheduledPost> findByIdAndUserId(Long id, Long userId);
     Optional<ScheduledPost> findByIdempotencyKey(String idempotencyKey);
 
@@ -21,6 +23,12 @@ public interface ScheduledPostRepository extends JpaRepository<ScheduledPost, Lo
 
     @Query("SELECT p FROM ScheduledPost p WHERE p.status = :status AND p.scheduledAt <= :now")
     List<ScheduledPost> findDuePosts(@Param("status") PostStatus status, @Param("now") LocalDateTime now);
+
+    @Query("SELECT p FROM ScheduledPost p JOIN FETCH p.instagramAccount WHERE p.user.id = :userId ORDER BY p.scheduledAt DESC")
+    List<ScheduledPost> findRecentPostsWithAccount(@Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT p.status, COUNT(p) FROM ScheduledPost p WHERE p.user.id = :userId GROUP BY p.status")
+    List<Object[]> countPostsByStatusForUser(@Param("userId") Long userId);
 
     long countByUserId(Long userId);
     long countByUserIdAndStatus(Long userId, PostStatus status);

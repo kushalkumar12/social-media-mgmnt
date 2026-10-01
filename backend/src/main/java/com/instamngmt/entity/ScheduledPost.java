@@ -7,7 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "scheduled_posts")
+@Table(
+    name = "scheduled_posts",
+    indexes = {
+        @Index(name = "idx_sched_posts_user_status", columnList = "user_id, status"),
+        @Index(name = "idx_sched_posts_user_sched_at", columnList = "user_id, scheduled_at DESC"),
+        @Index(name = "idx_sched_posts_status_sched_at", columnList = "status, scheduled_at"),
+        @Index(name = "idx_sched_posts_idempotency_key", columnList = "idempotency_key")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -7,7 +7,11 @@ import com.instamngmt.entity.User;
 import com.instamngmt.exception.APIException;
 import com.instamngmt.exception.ResourceNotFoundException;
 import com.instamngmt.repository.InstagramAccountRepository;
+import com.instamngmt.entity.NotificationSeverity;
+import com.instamngmt.entity.NotificationType;
+import com.instamngmt.event.NotificationEvent;
 import com.instamngmt.util.EncryptionUtil;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,14 +28,17 @@ public class InstagramAuthService {
     private final InstagramAccountRepository instagramAccountRepository;
     private final InstagramClientService instagramClientService;
     private final EncryptionUtil encryptionUtil;
+    private final ApplicationEventPublisher eventPublisher;
 
     public InstagramAuthService(
             InstagramAccountRepository instagramAccountRepository,
             InstagramClientService instagramClientService,
-            EncryptionUtil encryptionUtil) {
+            EncryptionUtil encryptionUtil,
+            ApplicationEventPublisher eventPublisher) {
         this.instagramAccountRepository = instagramAccountRepository;
         this.instagramClientService = instagramClientService;
         this.encryptionUtil = encryptionUtil;
+        this.eventPublisher = eventPublisher;
     }
 
     public InstagramDTOs.VerifyAccountDetailsResponse verifyAccountDetails(InstagramDTOs.VerifyAccountDetailsRequest request) {
@@ -125,6 +132,14 @@ public class InstagramAuthService {
         } catch (Exception ignored) {}
 
         account = instagramAccountRepository.save(account);
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .user(user)
+                .title("Account Connected")
+                .message("Successfully connected Instagram account @" + account.getUsername())
+                .type(NotificationType.ACCOUNT_CONNECTED)
+                .severity(NotificationSeverity.SUCCESS)
+                .link("/instagram/accounts")
+                .build());
         return mapToDTO(account);
     }
 
@@ -135,8 +150,13 @@ public class InstagramAuthService {
             return List.of();
         }
 
-        // Live check with Meta Graph API for each account to ensure picture, username and token status are accurate
+        LocalDateTime staleThreshold = LocalDateTime.now().minusMinutes(10);
+
+        // Live check with Meta Graph API for each account that is stale or never refreshed
         accounts.parallelStream().forEach(account -> {
+            if (account.getLastRefreshedAt() != null && account.getLastRefreshedAt().isAfter(staleThreshold)) {
+                return; // Cached details are fresh, avoid redundant live HTTP requests
+            }
             try {
                 String token = encryptionUtil.decrypt(account.getAccessTokenEncrypted());
                 InstagramClientService.DetailedAccountInfo info = instagramClientService.fetchAccountDetails(account.getIgUserId(), token);
@@ -161,6 +181,14 @@ public class InstagramAuthService {
                     account.setStatus(AccountStatus.TOKEN_EXPIRED);
                     account.setLastRefreshedAt(LocalDateTime.now());
                     instagramAccountRepository.save(account);
+                    eventPublisher.publishEvent(NotificationEvent.builder()
+                            .user(user)
+                            .title("Token Expired")
+                            .message("Instagram account @" + account.getUsername() + " token expired. Re-authorization required.")
+                            .type(NotificationType.TOKEN_EXPIRED)
+                            .severity(NotificationSeverity.ERROR)
+                            .link("/instagram/accounts")
+                            .build());
                 }
             }
         });
@@ -179,6 +207,14 @@ public class InstagramAuthService {
         InstagramAccount account = instagramAccountRepository.findByIdAndUserId(accountId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("InstagramAccount", "id", accountId));
         instagramAccountRepository.delete(account);
+        eventPublisher.publishEvent(NotificationEvent.builder()
+                .user(user)
+                .title("Account Disconnected")
+                .message("Instagram account @" + account.getUsername() + " was disconnected")
+                .type(NotificationType.ACCOUNT_DISCONNECTED)
+                .severity(NotificationSeverity.INFO)
+                .link("/instagram/accounts")
+                .build());
     }
 
     @Transactional
